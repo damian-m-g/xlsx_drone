@@ -10,8 +10,8 @@
 #include <sys/stat.h>
 
 // external libraries
-#include "zip.h" // https://github.com/kuba--/zip
-#include "sxmlc.h" // http://sxmlc.sourceforge.net/
+#include "zip.h" // https://github.com/kuba--/zip | using version 0.1.11
+#include "sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 3.0
 #include "sxmlsearch.h"
 
 
@@ -126,6 +126,7 @@ typedef struct xlsx_cell_t {
 static char **xlsx_predefined_styles_format_code = NULL;
 static xlsx_cell_kind xlsx_predefined_style_types[AMOUNT_OF_PREDEFINED_STYLE_TYPES];
 static int xlsx_print_err_messages = true;
+static char *e_position; // speeding purpose
 
 
 // functions

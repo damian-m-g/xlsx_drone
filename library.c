@@ -425,7 +425,7 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
     // it is, so don't look for the row, just for the cell
     XMLNode *cell_node = \
       find_cell_node(sheet->sheetdata->children[sheet->last_row_looked.sheetdata_child_i], cell_as_s);
-    if(!cell_node) {
+    if(cell_node) {
       interpret_cell_node(cell_node, sheet, cell_data_holder);
     }
 
@@ -562,7 +562,7 @@ static int initialize_predefined_style_data(void) {
   xlsx_predefined_style_types[11] = XLSX_NUMBER;
   xlsx_predefined_style_types[12] = XLSX_NUMBER;
   xlsx_predefined_style_types[13] = XLSX_NUMBER;
-  xlsx_predefined_style_types[14] = XLSX_NUMBER;
+  xlsx_predefined_style_types[14] = XLSX_DATE;
   xlsx_predefined_style_types[15] = XLSX_DATE;
   xlsx_predefined_style_types[16] = XLSX_DATE;
   xlsx_predefined_style_types[17] = XLSX_DATE;
@@ -616,7 +616,7 @@ static int initialize_predefined_style_data(void) {
   xlsx_predefined_styles_format_code[11] = "0.00E+00";
   xlsx_predefined_styles_format_code[12] = "# ?/?";
   xlsx_predefined_styles_format_code[13] = "# ?\?/??";
-  xlsx_predefined_styles_format_code[14] = "m/d/yyyy";
+  xlsx_predefined_styles_format_code[14] = "d/m/yyyy";
   xlsx_predefined_styles_format_code[15] = "d-mmm-yy";
   xlsx_predefined_styles_format_code[16] = "d-mmm";
   xlsx_predefined_styles_format_code[17] = "mmm-yy";
@@ -657,16 +657,18 @@ static int initialize_predefined_style_data(void) {
 */
 static xlsx_cell_kind get_related_type(const char *format_code, int format_code_length) {
   // *m_found* means an 'm' char found, it's ambiguous between date and time
-  int current_analyzed_index, is_date, is_time, m_found = 0;
-  for(; current_analyzed_index < format_code_length; ++current_analyzed_index) {
+  int current_analyzed_index, is_date = 0, is_time = 0, m_found = 0;
+  for(current_analyzed_index = 0; current_analyzed_index < format_code_length; ++current_analyzed_index) {
 
     // note that this could also return XLSX_FORMATTER_UNKNOWN
     switch(get_formatter(format_code, current_analyzed_index)) {
-      case XLSX_FORMATTER_AMBIGUOUS_M:
+      case XLSX_FORMATTER_AMBIGUOUS_M: {
         m_found = true;
-      case XLSX_FORMATTER_TIME:
+        break;
+      } case XLSX_FORMATTER_TIME: {
         is_time = true;
-      case XLSX_FORMATTER_DATE:
+        break;
+      } case XLSX_FORMATTER_DATE:
         is_date = true;
     }
 
@@ -696,6 +698,13 @@ static xlsx_cell_kind get_related_type(const char *format_code, int format_code_
 static xlsx_formatter get_formatter(const char *format_code, int current_analyzed_index) {
   switch(format_code[current_analyzed_index]) {
     case 'm': case 'h': case 's': case 'y': case 'd': {
+      // "[Red]" case
+      if(format_code[current_analyzed_index] == 'd' && current_analyzed_index >= 3 &&
+        format_code[current_analyzed_index - 3] == '[' && format_code[current_analyzed_index - 2] == 'R' &&
+        format_code[current_analyzed_index - 1] == 'e' && format_code[current_analyzed_index + 1] == ']') {
+        return XLSX_FORMATTER_UNKNOWN;
+      }
+
       // so far it isn't escaped
       int char_is_escaped = false;
       // check if it's escaped
@@ -1001,7 +1010,7 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
 *   cell_data_holder: xlsx_cell_t structure which holds data regarding a specific cell.
 */
 static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *cell_data_holder) {
-  if(strchr(cell_text, '.')) {
+  if(strchr(cell_text, '.') || ((e_position = strchr(cell_text, 'E')) && (*(++e_position) == '-'))) {
     // it's a floating point value
     cell_data_holder->value_type = XLSX_DOUBLE;
     cell_data_holder->value.double_value = strtod(cell_text, NULL);
