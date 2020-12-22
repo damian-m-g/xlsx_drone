@@ -11,7 +11,7 @@
 * params:
 *   flag: pass 0 if you want to cancel this feature, pass another value if you want to enable it.
 * notes:
-*   Out of memory errors never gets printed.
+*   Out of memory errors never get printed.
 */
 void xlsx_set_print_err_messages(int flag) {
   xlsx_print_err_messages = flag;
@@ -76,14 +76,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   char path_to_shared_strings_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_SHARED_STRINGS) + 1];
   strcpy(path_to_shared_strings_xml, deployed_xlsx_path);
   strcat(path_to_shared_strings_xml, REL_PATH_TO_SHARED_STRINGS);
-  // next function returns false if something went wrong
-  if(!(XMLDoc_parse_file_DOM(path_to_shared_strings_xml, xlsx->shared_strings_xml))) {
-    xlsx_close(xlsx);
-    if(xlsx_print_err_messages)
-      fprintf(stderr, "XLSX_C ERROR: \"%s\" can't be parsed or doesn't exist.\n", REL_PATH_TO_SHARED_STRINGS);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
-    return 0; // FAIL
-  }
+  // next function returns false if something went wrong in the parsing OR if the file doesn't exist, which may happen
+  // when the XLSX has no content (or no strings), I don't think it's neccesary to add a check here
+  XMLDoc_parse_file_DOM(path_to_shared_strings_xml, xlsx->shared_strings_xml);
 
   // load and parse a bit of styles.xml
   XMLDoc styles_xml;
@@ -380,7 +375,7 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet) {
 *   recommended way to go, because, as you can see, a cell_data_holder reserves a lot of memory. This was thought to
 *   save run-time.
 * params:
-*   - sheet: the sheet where to look, it has to be loaded.
+*   - sheet: the sheet where to look, it had to be loaded.
 *   - row: cell row.
 *   - column: cell column.
 *   - cell_data_holder: read data will be written here, read it after the function returns.
@@ -460,7 +455,7 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
 *   object passed as argument. It is your responsability to pass an actually deployed xlsx, otherwise the behaviour
 *   is undefined.
 * params:
-*   - deployed_xlsx: deployed_xlsx parameter already passed to xlsx_open() with result 0 (OK).
+*   - deployed_xlsx: deployed_xlsx parameter already passed to xlsx_open() with result 1 (OK).
 * notes:
 *   - *deployed_xlsx* won't be freed by this function, it's responsability of the library user.
 * returns:
@@ -599,8 +594,8 @@ static int initialize_predefined_style_data(void) {
   xlsx_predefined_style_types[48] = XLSX_NUMBER;
   xlsx_predefined_style_types[49] = XLSX_TEXT;
 
-  // set *xlsx_predefined_styles_format_code*. Note that some of the values of the array are NULL. The same index for these
-  // NULL values are UNKNOWN in *xlsx_predefined_style_types*
+  // set *xlsx_predefined_styles_format_code*. Note that some of the values of the array are NULL. The same index for
+  // these NULL values are UNKNOWN in *xlsx_predefined_style_types*
   if(!(xlsx_predefined_styles_format_code = calloc(AMOUNT_OF_PREDEFINED_STYLE_TYPES, sizeof(char *))))
     return 0;
   xlsx_predefined_styles_format_code[1] = "0";
@@ -668,8 +663,10 @@ static xlsx_cell_kind get_related_type(const char *format_code, int format_code_
       } case XLSX_FORMATTER_TIME: {
         is_time = true;
         break;
-      } case XLSX_FORMATTER_DATE:
+      } case XLSX_FORMATTER_DATE: {
         is_date = true;
+        break;
+      } default: {}
     }
 
     if(is_date && is_time)
@@ -908,7 +905,7 @@ static XMLNode * find_row_node(xlsx_sheet_t *sheet, unsigned row, int start_from
     row_inspected = strtol(row_node->attributes[0].value, NULL, 10);
     if(row_inspected == row) {
       // row found
-      sheet->last_row_looked.row_n = row;
+      sheet->last_row_looked.row_n = (int)row;
       sheet->last_row_looked.sheetdata_child_i = start_from_child;
       return(row_node);
     } else if(row_inspected > row) {
@@ -941,7 +938,7 @@ static XMLNode * find_cell_node(XMLNode *row, const char *cell) {
   }
   // reached this point, the node wasn't found
   return NULL;
-};
+}
 
 
 /*

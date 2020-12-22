@@ -1,0 +1,1 @@
+start gdbserver localhost:2159 bin/unit_tests.exe
