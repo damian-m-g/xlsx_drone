@@ -123,8 +123,110 @@ typedef struct xlsx_cell_t {
 
 
 // global variables
-static char **xlsx_predefined_styles_format_code = NULL;
-static xlsx_cell_kind xlsx_predefined_style_types[AMOUNT_OF_PREDEFINED_STYLE_TYPES];
+static xlsx_cell_kind xlsx_predefined_style_types[AMOUNT_OF_PREDEFINED_STYLE_TYPES] = {
+  XLSX_UNKNOWN, // 0
+  XLSX_NUMBER, // 1
+  XLSX_NUMBER, // 2
+  XLSX_NUMBER, // 3
+  XLSX_NUMBER, // 4
+  XLSX_NUMBER, // 5
+  XLSX_NUMBER, // 6
+  XLSX_NUMBER, // 7
+  XLSX_NUMBER, // 8
+  XLSX_NUMBER, // 9
+  XLSX_NUMBER, // 10
+  XLSX_NUMBER, // 11
+  XLSX_NUMBER, // 12
+  XLSX_NUMBER, // 13
+  XLSX_DATE, // 14
+  XLSX_DATE, // 15
+  XLSX_DATE, // 16
+  XLSX_DATE, // 17
+  XLSX_DATE_TIME, // 18
+  XLSX_DATE_TIME, // 19
+  XLSX_TIME, // 20
+  XLSX_TIME, // 21
+  XLSX_DATE_TIME, // 22
+  XLSX_UNKNOWN, // 23
+  XLSX_UNKNOWN, // 24
+  XLSX_UNKNOWN, // 25
+  XLSX_UNKNOWN, // 26
+  XLSX_UNKNOWN, // 27
+  XLSX_UNKNOWN, // 28
+  XLSX_UNKNOWN, // 29
+  XLSX_UNKNOWN, // 30
+  XLSX_UNKNOWN, // 31
+  XLSX_UNKNOWN, // 32
+  XLSX_UNKNOWN, // 33
+  XLSX_UNKNOWN, // 34
+  XLSX_UNKNOWN, // 35
+  XLSX_UNKNOWN, // 36
+  XLSX_NUMBER, // 37
+  XLSX_NUMBER, // 38
+  XLSX_NUMBER, // 39
+  XLSX_NUMBER, // 40
+  XLSX_UNKNOWN, // 41
+  XLSX_UNKNOWN, // 42
+  XLSX_UNKNOWN, // 43
+  XLSX_UNKNOWN, // 44
+  XLSX_TIME, // 45
+  XLSX_TIME, // 46
+  XLSX_TIME, // 47
+  XLSX_NUMBER, // 48
+  XLSX_TEXT // 49
+};
+static char *xlsx_predefined_styles_format_code[AMOUNT_OF_PREDEFINED_STYLE_TYPES] = {
+    NULL, // 0
+    "0", // 1
+    "0.00", // 2
+    "#,##0", // 3
+    "#,##0.00", // 4
+    "$#,##0_);($#,##0)", // 5
+    "$#,##0_);[Red]($#,##0)", // 6
+    "$#,##0.00_);($#,##0.00)", // 7
+    "$#,##0.00_);[Red]($#,##0.00)", // 8
+    "0%", // 9
+    "0.00%", // 10
+    "0.00E+00", // 11
+    "# ?/?", // 12
+    "# ?\?/??", // 13
+    "d/m/yyyy", // 14
+    "d-mmm-yy", // 15
+    "d-mmm", // 16
+    "mmm-yy", // 17
+    "h:mm AM/PM", // 18
+    "h:mm:ss AM/PM", // 19
+    "h:mm", // 20
+    "h:mm:ss", // 21
+    "m/d/yyyy h:mm", // 22
+    NULL, // 23
+    NULL, // 24
+    NULL, // 25
+    NULL, // 26
+    NULL, // 27
+    NULL, // 28
+    NULL, // 29
+    NULL, // 30
+    NULL, // 31
+    NULL, // 32
+    NULL, // 33
+    NULL, // 34
+    NULL, // 35
+    NULL, // 36
+    "#,##0_);(#,##0)", // 37
+    "#,##0_);[Red](#,##0)", // 38
+    "#,##0.00_);(#,##0.00)", // 39
+    "#,##0.00_);[Red](#,##0.00)", // 40
+    NULL, // 41
+    NULL, // 42
+    NULL, // 43
+    NULL, // 44
+    "mm:ss", // 45
+    "[h]:mm:ss", // 46
+    "mm:ss.0", // 47
+    "##0.0E+0", // 48
+    "@" // 49
+};
 static int xlsx_print_err_messages = true;
 static char *e_position; // speeding purpose
 
@@ -166,7 +268,6 @@ int xlsx_close(xlsx_workbook_t *deployed_xlsx);
 // private
 static void init_xlsx_workbook_t_struct(xlsx_workbook_t *xlsx);
 static void init_xlsx_sheet_t_struct(xlsx_sheet_t *sheet, xlsx_workbook_t *deployed_xlsx);
-static int initialize_predefined_style_data(void);
 static xlsx_cell_kind get_related_type(const char *format_code, int format_code_length);
 static xlsx_formatter get_formatter(const char *format_code, int current_analyzed_index);
 static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet);

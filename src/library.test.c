@@ -8,12 +8,19 @@ void tearDown(void) {}
 
 void test_xlsx_open(void) {
   xlsx_workbook_t wb;
-  xlsx_open("C:\\code\\c\\porcupine\\helpers\\sample.xlsx", &wb);
 
-  // DEBUGGING
-  // printf("Deployment path: %s", wb->deployment_path);
-  // printf("Number of sheets: %u", wb->n_sheets);
+  xlsx_open("C:\\code\\c\\porcupine\\test\\helpers\\empty_sample.xlsx", &wb); // ATTENTION: Must be closed
+  // an empty sample has no shared strings xml (nor a file w/o strings)
+  TEST_ASSERT_NULL(wb.shared_strings_xml);
+  xlsx_close(&wb);
 
+  xlsx_open("C:\\code\\c\\porcupine\\test\\helpers\\sample.xlsx", &wb); // ATTENTION: Must be closed
+  TEST_ASSERT_NOT_NULL(wb.shared_strings_xml);
+
+  // WIP: Test n_styles and its struct
+  TEST_ASSERT_EQUAL_INT(55, wb.n_styles);
+
+  TEST_ASSERT_EQUAL_INT(3, wb.n_sheets);
   xlsx_close(&wb);
 }
 

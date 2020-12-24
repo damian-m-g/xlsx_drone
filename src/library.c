@@ -41,18 +41,18 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 
   // build the temporary path where the excel will be deployed
   const char *temp_path = getenv(ENVIRONMENT_VARIABLE_TEMP);
-  // tmpname() returns a name with a period at the end,
-  // this is unaccepted by Windows standard for folder/file names
+  // tmpname() returns a name with a period at the end, this is unaccepted by Windows standard for folder/file names
   const char *temp_folder = tmpnam(NULL);
-  char *deployed_xlsx_path = malloc(sizeof(char) * (strlen(temp_path) + strlen(temp_folder) + 1));
+  int deployed_xlsx_path_len = strlen(temp_path) + strlen(temp_folder);
+  char *deployed_xlsx_path = malloc(sizeof(char) * (deployed_xlsx_path_len + 1));
   if(!deployed_xlsx_path) {
     XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
     return 0; // FAIL
   }
   strcpy(deployed_xlsx_path, temp_path);
   strcat(deployed_xlsx_path, temp_folder);
-  // remove thy period
-  deployed_xlsx_path[strlen(deployed_xlsx_path) - 1] = '\0';
+  // make the char array a string
+  deployed_xlsx_path[deployed_xlsx_path_len] = '\0';
 
   // deploy there
   if(zip_extract(src, deployed_xlsx_path, NULL, NULL) != 0) {
@@ -77,8 +77,12 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   strcpy(path_to_shared_strings_xml, deployed_xlsx_path);
   strcat(path_to_shared_strings_xml, REL_PATH_TO_SHARED_STRINGS);
   // next function returns false if something went wrong in the parsing OR if the file doesn't exist, which may happen
-  // when the XLSX has no content (or no strings), I don't think it's neccesary to add a check here
-  XMLDoc_parse_file_DOM(path_to_shared_strings_xml, xlsx->shared_strings_xml);
+  // when the XLSX has no strings
+  if(!XMLDoc_parse_file_DOM(path_to_shared_strings_xml, xlsx->shared_strings_xml)) {
+    // if prev function fails, it calls XMLDoc_free(), so no need to call it again
+    free(xlsx->shared_strings_xml);
+    xlsx->shared_strings_xml = NULL;
+  }
 
   // load and parse a bit of styles.xml
   XMLDoc styles_xml;
@@ -114,14 +118,6 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
     return 0; // FAIL
   }
-
-  // it would be needed to have certain data initialized
-  if(!xlsx_predefined_styles_format_code)
-    if(!initialize_predefined_style_data()) {
-      xlsx_close(xlsx);
-      XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
-      return 0; // FAIL
-    }
 
   // initialize variables that will be used on the loop
   int xf_index, attr_index, format_code_length, xf_node_numfmtid_value_as_long;
@@ -465,9 +461,6 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
 int xlsx_close(xlsx_workbook_t *deployed_xlsx)
 {
   // free memory
-  if(xlsx_predefined_styles_format_code)
-    free(xlsx_predefined_styles_format_code);
-
   if(deployed_xlsx->shared_strings_xml) {
     XMLDoc_free(deployed_xlsx->shared_strings_xml);
     free(deployed_xlsx->shared_strings_xml);
@@ -533,104 +526,6 @@ static void init_xlsx_sheet_t_struct(xlsx_sheet_t *sheet, xlsx_workbook_t *deplo
   sheet->last_row = -1; // won't be known until xlsx_load_sheet()
   sheet->last_row_looked.row_n = -1; // no row was seeked yet
   sheet->last_row_looked.sheetdata_child_i = -1; // no row was seeked yet
-}
-
-
-/*
-* returns:
-*   - 0: everything went OK.
-*   - 1: Can't allocate memory (OOM).
-*/
-static int initialize_predefined_style_data(void) {
-  // set *xlsx_predefined_style_types*
-  xlsx_predefined_style_types[0] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[1] = XLSX_NUMBER;
-  xlsx_predefined_style_types[2] = XLSX_NUMBER;
-  xlsx_predefined_style_types[3] = XLSX_NUMBER;
-  xlsx_predefined_style_types[4] = XLSX_NUMBER;
-  xlsx_predefined_style_types[5] = XLSX_NUMBER;
-  xlsx_predefined_style_types[6] = XLSX_NUMBER;
-  xlsx_predefined_style_types[7] = XLSX_NUMBER;
-  xlsx_predefined_style_types[8] = XLSX_NUMBER;
-  xlsx_predefined_style_types[9] = XLSX_NUMBER;
-  xlsx_predefined_style_types[10] = XLSX_NUMBER;
-  xlsx_predefined_style_types[11] = XLSX_NUMBER;
-  xlsx_predefined_style_types[12] = XLSX_NUMBER;
-  xlsx_predefined_style_types[13] = XLSX_NUMBER;
-  xlsx_predefined_style_types[14] = XLSX_DATE;
-  xlsx_predefined_style_types[15] = XLSX_DATE;
-  xlsx_predefined_style_types[16] = XLSX_DATE;
-  xlsx_predefined_style_types[17] = XLSX_DATE;
-  xlsx_predefined_style_types[18] = XLSX_DATE_TIME;
-  xlsx_predefined_style_types[19] = XLSX_DATE_TIME;
-  xlsx_predefined_style_types[20] = XLSX_TIME;
-  xlsx_predefined_style_types[21] = XLSX_TIME;
-  xlsx_predefined_style_types[22] = XLSX_DATE_TIME;
-  xlsx_predefined_style_types[23] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[24] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[25] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[26] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[27] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[28] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[29] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[30] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[31] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[32] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[33] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[34] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[35] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[36] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[37] = XLSX_NUMBER;
-  xlsx_predefined_style_types[38] = XLSX_NUMBER;
-  xlsx_predefined_style_types[39] = XLSX_NUMBER;
-  xlsx_predefined_style_types[40] = XLSX_NUMBER;
-  xlsx_predefined_style_types[41] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[42] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[43] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[44] = XLSX_UNKNOWN;
-  xlsx_predefined_style_types[45] = XLSX_TIME;
-  xlsx_predefined_style_types[46] = XLSX_TIME;
-  xlsx_predefined_style_types[47] = XLSX_TIME;
-  xlsx_predefined_style_types[48] = XLSX_NUMBER;
-  xlsx_predefined_style_types[49] = XLSX_TEXT;
-
-  // set *xlsx_predefined_styles_format_code*. Note that some of the values of the array are NULL. The same index for
-  // these NULL values are UNKNOWN in *xlsx_predefined_style_types*
-  if(!(xlsx_predefined_styles_format_code = calloc(AMOUNT_OF_PREDEFINED_STYLE_TYPES, sizeof(char *))))
-    return 0;
-  xlsx_predefined_styles_format_code[1] = "0";
-  xlsx_predefined_styles_format_code[2] = "0.00";
-  xlsx_predefined_styles_format_code[3] = "#,##0";
-  xlsx_predefined_styles_format_code[4] = "#,##0.00";
-  xlsx_predefined_styles_format_code[5] = "$#,##0_);($#,##0)";
-  xlsx_predefined_styles_format_code[6] = "$#,##0_);[Red]($#,##0)";
-  xlsx_predefined_styles_format_code[7] = "$#,##0.00_);($#,##0.00)";
-  xlsx_predefined_styles_format_code[8] = "$#,##0.00_);[Red]($#,##0.00)";
-  xlsx_predefined_styles_format_code[9] = "0%";
-  xlsx_predefined_styles_format_code[10] = "0.00%";
-  xlsx_predefined_styles_format_code[11] = "0.00E+00";
-  xlsx_predefined_styles_format_code[12] = "# ?/?";
-  xlsx_predefined_styles_format_code[13] = "# ?\?/??";
-  xlsx_predefined_styles_format_code[14] = "d/m/yyyy";
-  xlsx_predefined_styles_format_code[15] = "d-mmm-yy";
-  xlsx_predefined_styles_format_code[16] = "d-mmm";
-  xlsx_predefined_styles_format_code[17] = "mmm-yy";
-  xlsx_predefined_styles_format_code[18] = "h:mm AM/PM";
-  xlsx_predefined_styles_format_code[19] = "h:mm:ss AM/PM";
-  xlsx_predefined_styles_format_code[20] = "h:mm";
-  xlsx_predefined_styles_format_code[21] = "h:mm:ss";
-  xlsx_predefined_styles_format_code[22] = "m/d/yyyy h:mm";
-  xlsx_predefined_styles_format_code[37] = "#,##0_);(#,##0)";
-  xlsx_predefined_styles_format_code[38] = "#,##0_);[Red](#,##0)";
-  xlsx_predefined_styles_format_code[39] = "#,##0.00_);(#,##0.00)";
-  xlsx_predefined_styles_format_code[40] = "#,##0.00_);[Red](#,##0.00)";
-  xlsx_predefined_styles_format_code[45] = "mm:ss";
-  xlsx_predefined_styles_format_code[46] = "[h]:mm:ss";
-  xlsx_predefined_styles_format_code[47] = "mm:ss.0";
-  xlsx_predefined_styles_format_code[48] = "##0.0E+0";
-  xlsx_predefined_styles_format_code[49] = "@";
-
-  return 1;
 }
 
 
