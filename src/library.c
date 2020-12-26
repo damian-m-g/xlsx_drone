@@ -533,8 +533,7 @@ static void init_xlsx_sheet_t_struct(xlsx_sheet_t *sheet, xlsx_workbook_t *deplo
 * summary:
 *   Parses a *format_code*, in search for clues, that takes the program to understand which is the type the
 *   *format_code* is talking about. Don't pass *format_code* that formats raw text, this function expects to work
-*   with.
-*   numbers.
+*   with numbers.
 * params:
 *   - format_code: format_code withdrawn from a numFmt node in the styles XML.
 *   - format_code_length: for speeding purpose.

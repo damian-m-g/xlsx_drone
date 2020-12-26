@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.2-alpha] - 2020-12-26
+### Added
+- Finished test_xlsx_open() assertions battery of tests.
+
 ## [0.1.1-alpha] - 2020-12-24
 ### Fixed
 - Problem in the creation of the temporary directory where the XLSX is deployed.
