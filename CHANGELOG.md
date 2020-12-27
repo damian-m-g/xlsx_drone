@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3-alpha] - 2020-12-27
+### Added
+- Finished test_xlsx_load_sheet() & test_xlsx_unload_sheet() & test_xlsx_close().
+- Although the user shouldn't want to access freed data after it was freed, he might want to give it a try. I wasn't
+setting pointers to freed data to NULL and now I decided to do it. This changes were implemented in xlsx_unload_sheet()
+& xlsx_close().
+
 ## [0.1.2-alpha] - 2020-12-26
 ### Added
 - Finished test_xlsx_open() assertions battery of tests.

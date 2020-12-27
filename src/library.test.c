@@ -9,7 +9,7 @@ void tearDown(void) {}
 void test_xlsx_open(void) {
   xlsx_workbook_t wb;
 
-  xlsx_open("test\\helpers\\empty_sample.xlsx", &wb); // ATTENTION: Must be closed
+  TEST_ASSERT_EQUAL_INT(1, xlsx_open("test\\helpers\\empty_sample.xlsx", &wb));  // ATTENTION: Must be closed
   // an empty sample has no shared strings xml (nor a file w/o strings)
   TEST_ASSERT_NULL(wb.shared_strings_xml);
   xlsx_close(&wb);
@@ -343,24 +343,85 @@ void test_xlsx_open(void) {
   TEST_ASSERT_EQUAL_INT(xlsx_predefined_style_types[style->style_id], style->related_type);
   TEST_ASSERT_EQUAL_STRING(xlsx_predefined_styles_format_code[style->style_id], style->format_code);
 
+  // sheet related things
   TEST_ASSERT_EQUAL_INT(3, wb.n_sheets);
+
+  TEST_ASSERT_EQUAL_STRING("Sheet1", wb.sheets[0]->name);
+  TEST_ASSERT_EQUAL_STRING("second sheet", wb.sheets[1]->name);
+  TEST_ASSERT_EQUAL_STRING("third one", wb.sheets[2]->name);
+
   xlsx_close(&wb);
 }
 
+
 void test_xlsx_load_sheet(void) {
-  TEST_IGNORE_MESSAGE("Not written yet.");
+  xlsx_workbook_t wb;
+  xlsx_open("test\\helpers\\sample.xlsx", &wb); // ATTENTION: Must be closed
+
+  xlsx_sheet_t *sheet_1, *sheet_2, *sheet_3;
+  sheet_1 = xlsx_load_sheet(&wb, 1, NULL);
+  TEST_ASSERT_NOT_NULL(sheet_1);
+  TEST_ASSERT_NOT_NULL(sheet_1->sheet_xml);
+  TEST_ASSERT_NOT_NULL(sheet_1->sheetdata);
+  TEST_ASSERT_EQUAL_INT(23, sheet_1->last_row);
+
+  sheet_2 = xlsx_load_sheet(&wb, 0, "second sheet");
+  TEST_ASSERT_NOT_NULL(sheet_2);
+  TEST_ASSERT_NOT_NULL(sheet_2->sheet_xml);
+  TEST_ASSERT_NOT_NULL(sheet_2->sheetdata);
+  TEST_ASSERT_EQUAL_INT(5, sheet_2->last_row);
+
+  sheet_3 = xlsx_load_sheet(&wb, 0, "third one");
+  TEST_ASSERT_NOT_NULL(sheet_3);
+  TEST_ASSERT_NOT_NULL(sheet_3->sheet_xml);
+  TEST_ASSERT_NOT_NULL(sheet_3->sheetdata);
+  TEST_ASSERT_EQUAL_INT(0, sheet_3->last_row);
+
+  xlsx_close(&wb);
 }
+
 
 void test_xlsx_unload_sheet(void) {
-  TEST_IGNORE_MESSAGE("Not written yet.");
+  xlsx_workbook_t wb;
+  xlsx_open("test\\helpers\\sample.xlsx", &wb); // ATTENTION: Must be closed
+
+  xlsx_sheet_t *sheet_1 = xlsx_load_sheet(&wb, 0, "Sheet1");
+  xlsx_unload_sheet(sheet_1);
+  TEST_ASSERT_NULL(sheet_1->name);
+  TEST_ASSERT_NULL(sheet_1->sheet_xml);
+
+  xlsx_close(&wb);
 }
+
 
 void test_xlsx_read_cell(void) {
-  TEST_IGNORE_MESSAGE("Not written yet.");
+  // setup
+  xlsx_workbook_t wb;
+  xlsx_open("test\\helpers\\sample.xlsx", &wb); // ATTENTION: Must be closed
+  xlsx_sheet_t *sheet_1 = xlsx_load_sheet(&wb, 1, NULL);
+  xlsx_cell_t cell_data_holder;
+
+  /* WIP:
+  * - All 3 members of cell_data_holder must be tested per cell read
+  * - sheet_1->last_row_looked.row_n & sheet_1->last_row_looked.sheetdata_child_i must be tested, is the only way to
+  * test the searching algoritm through public functions.
+  */
+  xlsx_read_cell(sheet_1, 2, "A", &cell_data_holder);
+
+
+  // teardown
+  xlsx_close(&wb);
 }
 
+
 void test_xlsx_close(void) {
-  TEST_IGNORE_MESSAGE("Not written yet.");
+  xlsx_workbook_t wb;
+  xlsx_open("test\\helpers\\sample.xlsx", &wb); // ATTENTION: Must be closed
+  TEST_ASSERT_EQUAL_INT(1, xlsx_close(&wb));
+  TEST_ASSERT_NULL(wb.shared_strings_xml);
+  TEST_ASSERT_NULL(wb.styles);
+  TEST_ASSERT_NULL(wb.sheets);
+  TEST_ASSERT_NULL(wb.deployment_path);
 }
 
 

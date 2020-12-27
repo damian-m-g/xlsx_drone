@@ -269,6 +269,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 
 
 /*
+* summary:
+*   Loads certain sheet, by its index (starts at 1) or by its name. Doing it by index is a bit faster.
 * params:
 *   - deployed_xlsx: deployed_xlsx parameter already passed to xlsx_open() with result 1 (OK).
 *   - sheet_number: sheet index, the first sheet is the 1, and so on. Pass 0 if you pass a valid *sheet_name*.
@@ -347,18 +349,21 @@ xlsx_sheet_t * xlsx_load_sheet(const xlsx_workbook_t *deployed_xlsx, int sheet_n
 /*
 * summary:
 *   Manual way of freeing the memory allocated to treat this *sheet*. You may invoke this function once you're done
-*   reading from it. This is not mandatory, is available in cases in which RAM availability really concerns you.
-*   Useful when the *sheet* is very crowded with data, a good practice to call this func if you finished reading it.
+*   reading from it (you won't be able to load it again). This is not mandatory, is available in cases in which RAM
+*   availability really concerns you. Useful when the *sheet* is very crowded with data, a good practice to call this
+*   func if you finished reading it.
 * params:
 *   - sheet: the sheet to unload.
 */
 void xlsx_unload_sheet(xlsx_sheet_t *sheet) {
   if(sheet->name) {
     free(sheet->name);
+    sheet->name = NULL;
     // if the name isn't allocated, neither the sheet_xml field
     if(sheet->sheet_xml) {
       XMLDoc_free(sheet->sheet_xml);
       free(sheet->sheet_xml);
+      sheet->sheet_xml = NULL;
     }
   }
 }
@@ -464,6 +469,7 @@ int xlsx_close(xlsx_workbook_t *deployed_xlsx)
   if(deployed_xlsx->shared_strings_xml) {
     XMLDoc_free(deployed_xlsx->shared_strings_xml);
     free(deployed_xlsx->shared_strings_xml);
+    deployed_xlsx->shared_strings_xml = NULL;
   }
 
   int index;
@@ -482,6 +488,7 @@ int xlsx_close(xlsx_workbook_t *deployed_xlsx)
       }
     }
     free(deployed_xlsx->styles);
+    deployed_xlsx->styles = NULL;
   }
 
   if(deployed_xlsx->sheets) {
@@ -490,6 +497,7 @@ int xlsx_close(xlsx_workbook_t *deployed_xlsx)
       free(deployed_xlsx->sheets[index]);
     }
     free(deployed_xlsx->sheets);
+    deployed_xlsx->sheets = NULL;
   }
 
   int xlsx_delete_folder_res = 1;
@@ -499,6 +507,7 @@ int xlsx_close(xlsx_workbook_t *deployed_xlsx)
 
     // free what's left
     free(deployed_xlsx->deployment_path);
+    deployed_xlsx->deployment_path = NULL;
   }
 
   return xlsx_delete_folder_res;
