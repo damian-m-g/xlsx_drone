@@ -6,6 +6,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4-alpha] - 2020-12-29
+### Fixed
+- Explicit typecast made on several long values that have been assigned to int holders.
+- A string cell value could have a style associated, this wasn't taken into account before. Code was written to embrace 
+this possibility.
+- set_cell_data_values_for_number() wasn't working perfect. If an "E" is present in a cell value that isn't a string,
+that values are always returned as a double, even if it isn't a floating point value.
+  
+### Added
+- Finished test_xlsx_read_cell(). A total of 662 assertions were written for unit testing. All passing at this version.
+
 ## [0.1.3-alpha] - 2020-12-27
 ### Added
 - Finished test_xlsx_load_sheet() & test_xlsx_unload_sheet() & test_xlsx_close().

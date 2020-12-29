@@ -401,13 +401,732 @@ void test_xlsx_read_cell(void) {
   xlsx_sheet_t *sheet_1 = xlsx_load_sheet(&wb, 1, NULL);
   xlsx_cell_t cell_data_holder;
 
-  /* WIP:
-  * - All 3 members of cell_data_holder must be tested per cell read
-  * - sheet_1->last_row_looked.row_n & sheet_1->last_row_looked.sheetdata_child_i must be tested, is the only way to
-  * test the searching algoritm through public functions.
-  */
+  // A2, General, "Foo"
   xlsx_read_cell(sheet_1, 2, "A", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("Foo", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
 
+  // A3, General, 235
+  xlsx_read_cell(sheet_1, 3, "A", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(235, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // A4, General, 17.89
+  xlsx_read_cell(sheet_1, 4, "A", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(17.89, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B2, Number, 1000.000
+  xlsx_read_cell(sheet_1, 2, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(165, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(1000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B3, Number, 1,000.00
+  xlsx_read_cell(sheet_1, 3, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(4, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(1000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B4, Number, -1000.00
+  xlsx_read_cell(sheet_1, 4, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(2, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(-1000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B5, Number, 1000.000 (painted in red, hence negative)
+  xlsx_read_cell(sheet_1, 5, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(166, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(-1000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B6, Number, 1200.561 (painted in red, hence negative)
+  xlsx_read_cell(sheet_1, 6, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(165, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1200.561, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B7, Number, 123456789
+  xlsx_read_cell(sheet_1, 7, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(123456789, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B8, Number, 1234567890
+  xlsx_read_cell(sheet_1, 8, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_LONG_LONG, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT64(1234567890, cell_data_holder.value.long_long_value);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B9, Number, 2345678901
+  xlsx_read_cell(sheet_1, 9, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_LONG_LONG, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT64(2345678901, cell_data_holder.value.long_long_value);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B10, Number, 5678901234
+  xlsx_read_cell(sheet_1, 10, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_LONG_LONG, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT64(5678901234, cell_data_holder.value.long_long_value);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B11, Number, 123456789012345
+  xlsx_read_cell(sheet_1, 11, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_LONG_LONG, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT64(123456789012345, cell_data_holder.value.long_long_value);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B12, Number, 1234567890123450
+  xlsx_read_cell(sheet_1, 12, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_LONG_LONG, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT64(1234567890123450, cell_data_holder.value.long_long_value);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B13, Number, 1234567890123450000 (see documentation to understand why this number is set as a double)
+  xlsx_read_cell(sheet_1, 13, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.2345678901234501E+18, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B14, Number, 12345678901234500000 (see documentation to understand why this number is set as a double)
+  xlsx_read_cell(sheet_1, 14, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.23456789012345E+19, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(14, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B15, Number, 12345678901234500 (see documentation to understand why this number is set as a double)
+  xlsx_read_cell(sheet_1, 15, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.23456789012345E+16, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(15, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(14, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // B16, Number, 123456789012345000 (see documentation to understand why this number is set as a double)
+  xlsx_read_cell(sheet_1, 16, "B", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(1, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.23456789012345E+17, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(16, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(15, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // C2, Currency, $1,000.00
+  xlsx_read_cell(sheet_1, 2, "C", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(167, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(1000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // C3, Currency, -$14,562.74
+  xlsx_read_cell(sheet_1, 3, "C", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(167, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(-14562.74, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // C4, Currency, 584.00 (with non-ASCII character as currency)
+  xlsx_read_cell(sheet_1, 4, "C", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(168, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(584, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // D2, Accounting, 147.000
+  xlsx_read_cell(sheet_1, 2, "D", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(169, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(147, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // D3, Accounting, 1,200.874 (with non-ASCII character as currency)
+  xlsx_read_cell(sheet_1, 3, "D", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(170, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1200.874, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E2, Date, 24/12/2018
+  xlsx_read_cell(sheet_1, 2, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(14, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E3, Date, "lunes, 24 de diciembre de 2018" (tested with spanish lang set)
+  xlsx_read_cell(sheet_1, 3, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(171, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E4, Date, 2018-12-24
+  xlsx_read_cell(sheet_1, 4, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(172, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E5, Date, 12/24
+  xlsx_read_cell(sheet_1, 5, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(173, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E6, Date, 12/24/18
+  xlsx_read_cell(sheet_1, 6, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(174, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E7, Date, 12/24/18
+  xlsx_read_cell(sheet_1, 7, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(175, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E8, Date, 24-Dec
+  xlsx_read_cell(sheet_1, 8, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(176, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E9, Date, 24-Dec-18
+  xlsx_read_cell(sheet_1, 9, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(177, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E10, Date, Dec-18
+  xlsx_read_cell(sheet_1, 10, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(178, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E11, Date, December-18
+  xlsx_read_cell(sheet_1, 11, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(179, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E12, Date, "December 24, 2018"
+  xlsx_read_cell(sheet_1, 12, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(180, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E13, Date, 12/24/18 12:00 AM
+  xlsx_read_cell(sheet_1, 13, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(181, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E14, Date, 12/24/18 0:00
+  xlsx_read_cell(sheet_1, 14, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(182, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(14, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E15, Date, D
+  xlsx_read_cell(sheet_1, 15, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(183, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(15, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(14, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E16, Date, D-18
+  xlsx_read_cell(sheet_1, 16, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(184, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(16, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(15, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E17, Date, 12/24/2018
+  xlsx_read_cell(sheet_1, 17, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(185, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(17, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(16, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E18, Date, 24-Dec-2018
+  xlsx_read_cell(sheet_1, 18, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(186, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(18, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(17, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E19, Date, (Arabic (Algeria) style)
+  xlsx_read_cell(sheet_1, 19, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(187, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(19, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(18, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E20, Date, 43458
+  xlsx_read_cell(sheet_1, 20, "E", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(43458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(20, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(19, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E21, Date, 12/24/1154 (special case, is considered date, but is saved as string since "out of range" date)
+  xlsx_read_cell(sheet_1, 21, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(174, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("12/24/1154", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(21, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(20, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // E22, Date, 12/24/99
+  xlsx_read_cell(sheet_1, 22, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(174, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(2958458, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(22, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(21, sheet_1->last_row_looked.sheetdata_child_i);
+
+  /* E23, Date, text
+  * Here we are presented with a great contradiction. Cell format is set do "date", but user wrote "text" in the cell.
+  * The data was saved as a string, but the style associated has a "date" format. So what should we do here regarding
+  * the related_type? Date or text? Big contradiction since in cell E21 we have this problem but as we saw, there the
+  * user inputted an old date, out of range for the standard that relates a number to a date, but the user actually
+  * tried to input a date. In my opinion, we should state this realted_type as Date, having in consideration the case of
+  * cell E21 which could be more usual than inputting text there.
+  */
+  xlsx_read_cell(sheet_1, 23, "E", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(174, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("text", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(23, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(22, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F2, Time, 2:30:54 a. m.
+  xlsx_read_cell(sheet_1, 2, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(188, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F3, Time, 2:30
+  xlsx_read_cell(sheet_1, 3, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(189, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F4, Time, 2:30 AM
+  xlsx_read_cell(sheet_1, 4, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(190, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F5, Time, 2:30:54
+  xlsx_read_cell(sheet_1, 5, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(191, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F6, Time, 2:30:54 AM
+  xlsx_read_cell(sheet_1, 6, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(192, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F7, Time, 30:54.0
+  xlsx_read_cell(sheet_1, 7, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(193, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F8, Time, 2:30:54
+  xlsx_read_cell(sheet_1, 8, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(194, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F9, Time, 1/3/56 2:30 AM
+  xlsx_read_cell(sheet_1, 9, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(181, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(20457.104791666668, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F10, Time, 1/0/00 2:30 (is day "0" of 1900, computes as 0 for date)
+  xlsx_read_cell(sheet_1, 10, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(182, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.10479166666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F11, Time, 0,104791667
+  xlsx_read_cell(sheet_1, 11, "F", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.104791666666667, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F12, Time, 1/1/1889  2:30:54 AM (OOR for date representation as int/float (1900~9999?), it's saved as text)
+  xlsx_read_cell(sheet_1, 12, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(181, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("1/1/1889  2:30:54 AM", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F13, Time, 1/1/89  2:30 (comparing with the previous value, this is 1989, not 1889)
+  xlsx_read_cell(sheet_1, 13, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(181, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(32509.104791666668, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // F14, Time, 1/1/10000  2:30:54 AM (OOR for date representation as int/float (1900~9999?), it's saved as text)
+  xlsx_read_cell(sheet_1, 14, "F", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(181, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE_TIME, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("1/1/10000  2:30:54 AM", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(14, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // G2, Percentage, 50.00%
+  xlsx_read_cell(sheet_1, 2, "G", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(10, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // G3, Percentage, 45.000%
+  xlsx_read_cell(sheet_1, 3, "G", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(195, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(0.45, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // G4, Percentage, 160.00%
+  xlsx_read_cell(sheet_1, 4, "G", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(10, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.6, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H2, Fraction (always 1.5), 1 1/2
+  xlsx_read_cell(sheet_1, 2, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(12, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H3, Fraction (always 1.5), 1  1/2
+  xlsx_read_cell(sheet_1, 3, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(13, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H4, Fraction (always 1.5), 1   1/2
+  xlsx_read_cell(sheet_1, 4, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(196, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H5, Fraction (always 1.5), 1 1/2
+  xlsx_read_cell(sheet_1, 5, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(197, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H6, Fraction (always 1.5), 1 2/4
+  xlsx_read_cell(sheet_1, 6, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(198, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H7, Fraction (always 1.5), 1 4/8
+  xlsx_read_cell(sheet_1, 7, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(199, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(6, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H8, Fraction (always 1.5), 1  8/16
+  xlsx_read_cell(sheet_1, 8, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(200, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(7, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H9, Fraction (always 1.5), 15/10
+  xlsx_read_cell(sheet_1, 9, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(201, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(8, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H10, Fraction (always 1.5), 150/100
+  xlsx_read_cell(sheet_1, 10, "H", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(202, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(9, sheet_1->last_row_looked.sheetdata_child_i);
+
+
+  // H11, Fraction (always 1.5) (actually, just General), 1,5
+  xlsx_read_cell(sheet_1, 11, "H", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1.5, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(11, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(10, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // H13, Fraction (always 1.5), #VALUE! (this shows an error, an error has no style associated)
+  xlsx_read_cell(sheet_1, 13, "H", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("#VALUE!", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(13, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(12, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // I2, Scientific (always 0.001), 1.00E-03
+  xlsx_read_cell(sheet_1, 2, "I", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(11, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1E-3, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // I3, Scientific (always 0.001), 1.0E-03
+  xlsx_read_cell(sheet_1, 3, "I", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(203, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1E-3, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // I4, Scientific (always 0.001) (actually General), 0.001
+  xlsx_read_cell(sheet_1, 4, "I", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_DOUBLE, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_DOUBLE(1E-3, cell_data_holder.value.double_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // J2, Text, 1875 (Typed as '1875)
+  xlsx_read_cell(sheet_1, 2, "J", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(49, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TEXT, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("1875", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // J3, Text, Just text
+  xlsx_read_cell(sheet_1, 3, "J", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(49, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TEXT, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING("Just text", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // K2, Special, 02000 (Typed 2000)
+  xlsx_read_cell(sheet_1, 2, "K", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(204, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(2000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // K3, Special, 00000-2000 (Typed 2000)
+  xlsx_read_cell(sheet_1, 3, "K", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(205, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(2000, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // K4, Special, (54341) 563-5644 (Typed 543415635644)
+  xlsx_read_cell(sheet_1, 4, "K", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(206, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_LONG_LONG, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT64(543415635644, cell_data_holder.value.long_long_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // K5, Special, 034-58-0585 (Typed 34580585)
+  xlsx_read_cell(sheet_1, 5, "K", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(207, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(34580585, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // L2, Custom, $ 12 (Typed 12)
+  xlsx_read_cell(sheet_1, 2, "L", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(164, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_NUMBER, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(12, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(1, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // L3, Custom, 16-feb (Typed 16/2/2012)
+  xlsx_read_cell(sheet_1, 3, "L", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(16, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_DATE, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_INT, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_INT(40955, cell_data_holder.value.int_value);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
 
   // teardown
   xlsx_close(&wb);

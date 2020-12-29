@@ -120,7 +120,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   }
 
   // initialize variables that will be used on the loop
-  int xf_index, attr_index, format_code_length, xf_node_numfmtid_value_as_long;
+  int xf_index, attr_index, format_code_length, xf_node_numfmtid_value_as_int;
   XMLNode *xf_node, *num_fmt_node = NULL;
   char *xf_node_numfmtid_value = NULL;
   // loop over *cell_xfs_node* children
@@ -152,13 +152,13 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     }
     // once *xf_node_numfmtid_value* was found, see if it points to the predefined ones,
     // otherwise, look the matching numFmt element
-    xf_node_numfmtid_value_as_long = strtol(xf_node_numfmtid_value, NULL, 10);
-    xlsx->styles[xf_index]->style_id = xf_node_numfmtid_value_as_long;
-    if(xf_node_numfmtid_value_as_long < AMOUNT_OF_PREDEFINED_STYLE_TYPES) {
+    xf_node_numfmtid_value_as_int = (int)strtol(xf_node_numfmtid_value, NULL, 10);
+    xlsx->styles[xf_index]->style_id = xf_node_numfmtid_value_as_int;
+    if(xf_node_numfmtid_value_as_int < AMOUNT_OF_PREDEFINED_STYLE_TYPES) {
       // predefined style
-      xlsx->styles[xf_index]->related_type = xlsx_predefined_style_types[xf_node_numfmtid_value_as_long];
+      xlsx->styles[xf_index]->related_type = xlsx_predefined_style_types[xf_node_numfmtid_value_as_int];
       // note that next value could be NULL
-      xlsx->styles[xf_index]->format_code = xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_long];
+      xlsx->styles[xf_index]->format_code = xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
     } else {
       // custom style
       XMLSearch_init(&search_engine);
@@ -753,7 +753,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
       if(XMLSearch_next(row, &search_engine)) {
         for(attr_index = 0; attr_index < row->n_attributes; ++attr_index) {
           if(strcmp(row->attributes[attr_index].name, SHEET_ROW_ATTR_NAME) == 0) {
-            sheet->last_row = strtol(row->attributes[attr_index].value, NULL, 10);
+            sheet->last_row = (int)strtol(row->attributes[attr_index].value, NULL, 10);
             break;
           }
         }
@@ -805,7 +805,7 @@ static XMLNode * find_row_node(xlsx_sheet_t *sheet, unsigned row, int start_from
   XMLNode *row_node;
   for(; start_from_child < sheet->sheetdata->n_children; ++start_from_child) {
     row_node = sheet->sheetdata->children[start_from_child];
-    row_inspected = strtol(row_node->attributes[0].value, NULL, 10);
+    row_inspected = (int)strtol(row_node->attributes[0].value, NULL, 10);
     if(row_inspected == row) {
       // row found
       sheet->last_row_looked.row_n = (int)row;
@@ -859,7 +859,6 @@ static XMLNode * find_cell_node(XMLNode *row, const char *cell) {
 */
 static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t * cell_data_holder) {
 
-
   // check if has "t"
   if(strcmp(cell->attributes[cell->n_attributes - 1].name, SHEET_TYPE_ATTR_NAME) == 0) {
 
@@ -868,11 +867,17 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
     // check which one
     if(strcmp(cell->attributes[cell->n_attributes - 1].value, "s") == 0) {
       // it's a shared string
-      int shared_strings_index = strtol(cell->children[cell->n_children - 1]->text, NULL, 10);
+      int shared_strings_index = (int)strtol(cell->children[cell->n_children - 1]->text, NULL, 10);
       cell_data_holder->value.pointer_to_char_value = \
         sheet->xlsx->shared_strings_xml->nodes[1]->children[shared_strings_index]->children[0]->text;
+      // it could have some associated style (i.e.: see sample.xlsx cell E21)
+      if(strcmp(cell->attributes[cell->n_attributes - 2].name, SHEET_STYLE_ATTR_NAME) == 0) {
+        int style_index = (int)strtol(cell->attributes[cell->n_attributes - 2].value, NULL, 10);
+        cell_data_holder->style = sheet->xlsx->styles[style_index];
+      }
     } else {
-      // it's an inlineStr or an error
+      // it's an inlineStr or an error. An error doesn't have style associated.
+      // WARNING: I couldn't find a use case where inlineStr gets used to see if could have any style associated
       cell_data_holder->value.pointer_to_char_value = cell->children[cell->n_children - 1]->text;
     }
 
@@ -885,7 +890,7 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
       if(strcmp(cell->attributes[cell->n_attributes - 1].name, SHEET_STYLE_ATTR_NAME) == 0) {
 
         // could be a complex type
-        int style_index = strtol(cell->attributes[cell->n_attributes - 1].value, NULL, 10);
+        int style_index = (int)strtol(cell->attributes[cell->n_attributes - 1].value, NULL, 10);
         cell_data_holder->style = sheet->xlsx->styles[style_index];
         // save the value where it should be
         set_cell_data_values_for_number(cell_text, cell_data_holder);
@@ -904,17 +909,20 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
 /*
 * summary:
 *   Known that the *cell_text* represents a number, see to which primitive type commits better and reflect that inside
-*   *cell_data_holder*.
+*   *cell_data_holder*. Note that bigger numbers (bigger than the largest number long long can hold, like > to 18
+*   digits) will be represented by double. In this last case, the number appears with "E+" as part of the value
+*   representation in the XML.
 * params:
 *   cell_text: text representation of the number.
 *   cell_data_holder: xlsx_cell_t structure which holds data regarding a specific cell.
 */
 static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *cell_data_holder) {
-  if(strchr(cell_text, '.') || ((e_position = strchr(cell_text, 'E')) && (*(++e_position) == '-'))) {
-    // it's a floating point value
+  if(strchr(cell_text, '.') || strchr(cell_text, 'E')) {
+    // it's double (even if it's a big number, since it can't be represented by long long)
     cell_data_holder->value_type = XLSX_DOUBLE;
     cell_data_holder->value.double_value = strtod(cell_text, NULL);
   } else {
+    // it's int or long long
     if(strlen(cell_text) > 9) {
       // fits on a long long
       cell_data_holder->value_type = XLSX_LONG_LONG;
