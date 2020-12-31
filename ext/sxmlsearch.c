@@ -55,9 +55,6 @@ int XMLSearch_init(XMLSearch* search)
 	if (search == NULL)
 		return false;
 
-	if (search->init_value == XML_INIT_DONE)
-		XMLSearch_free(search, true);
-
 	search->tag = NULL;
 	search->text = NULL;
 	search->attributes = NULL;
@@ -92,6 +89,11 @@ int XMLSearch_free(XMLSearch* search, int free_next)
 		__free(search->attributes);
 		search->n_attributes = 0;
 		search->attributes = NULL;
+	}
+
+	if (search->text != NULL) {
+		__free(search->text);
+		search->text = NULL;
 	}
 
 	if (free_next && search->next != NULL) {

@@ -10,8 +10,8 @@
 #include <sys/stat.h>
 
 // external libraries
-#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.20 (2020/11)
-#include "../ext/sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 3.0
+#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.21 (2020/12)
+#include "../ext/sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 4.5.1 (2020/08)
 #include "../ext/sxmlsearch.h"
 
 

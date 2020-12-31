@@ -41,27 +41,69 @@
 #include <ctype.h>
 #include "sxmlc.h"
 
-#define CHECK_NODE(node,ret) if ((node) == NULL || (node)->init_value != XML_INIT_DONE) return (ret)
+#define CHECK_NODE(node,ret) if (!XMLNode_is_valid(node)) return (ret)
 
-/*
- Struct defining "special" tags such as "<? ?>" or "<![CDATA[ ]]/>".
- These tags are considered having a start and an end with some data in between that will
- be stored in the 'tag' member of an XMLNode.
- The 'tag_type' member is a constant that is associated to such tag.
- All 'len_*' members are basically the "sx_strlen()" of 'start' and 'end' members.
+/* UTF8 handling for Windows */
+#ifndef SXMLC_UNICODE
+#if defined(WIN32) || defined(WIN64)
+#include <windows.h>
+#endif
+#endif
+
+/* Determine if character is not ASCII. */
+#define sx_isunicode(c) ((int)c < 0 || (int)c > 127)
+
+#if defined(WIN32) || defined(WIN64)
+FILE* sx_fopen(const SXML_CHAR* filename, const SXML_CHAR* mode)
+{
+	FILE* ret = NULL;
+	int is_unicode = false;
+	const char* p;
+	
+	for (p = filename; p && *p; p++) {
+		if (sx_isunicode(*p)) {
+			is_unicode = true;
+			break;
+		}
+	}
+
+	if (is_unicode) {
+		wchar_t* wmode = mode[0] == 'w'
+			? mode[1] == 'b' ? L"wb" : L"wt"
+			: mode[1] == 'b' ? L"rb" : L"rt";
+		wchar_t*  wide = NULL;
+		const int length = MultiByteToWideChar(CP_UTF8, 0, filename, -1, NULL, 0);
+
+		if (length > 1) {
+			wide = (wchar_t*)malloc(length * sizeof(wchar_t));
+			if (wide) {
+				MultiByteToWideChar(CP_UTF8, 0, filename, -1, wide, length);
+				ret = _wfopen(wide, wmode);
+				free(wide);
+			}
+		}
+	} else
+		ret = fopen(filename, mode);
+
+	return ret;
+}
+#endif
+
+/**
+ * \brief Definition of "special" tags such as "&lt;? ?&gt;" or "&lt;![CDATA[ ]]/&gt;".
+ *
+ * These tags are considered having a start and an end with some data in between that will
+ * be stored in the 'tag' member of an XMLNode.
+ * The `tag_type` member is a constant that is associated to such tag.
+ * All `len_*` members are basically the "sx_strlen()" of 'start' and 'end' members.
  */
 typedef struct _Tag {
-	TagType tag_type;
-	SXML_CHAR* start;
-	int len_start;
-	SXML_CHAR* end;
-	int len_end;
+	TagType tag_type;	/**< The tag type. */
+	SXML_CHAR* start;	/**< The string representing the tag "opening". *Must start with &lt;*. */
+	int len_start;		/**< The `strlen(start)`. */
+	SXML_CHAR* end;		/**< The string representing the tag "closing". *Must end with &gt;*. */
+	int len_end;		/**< The `strlen(end)`. */
 } _TAG;
-
-typedef struct _SpecialTag {
-	_TAG *tags;
-	int n_tags;
-} SPECIAL_TAG;
 
 /*
  List of "special" tags handled by sxmlc.
@@ -78,7 +120,10 @@ static int NB_SPECIAL_TAGS = (int)(sizeof(_spec) / sizeof(_TAG)); /* Auto comput
 /*
  User-registered tags.
  */
-static SPECIAL_TAG _user_tags = { NULL, 0 };
+static struct _SpecialTag {
+	_TAG *tags;
+	int n_tags;
+} _user_tags = { NULL, 0 };
 
 int XML_register_user_tag(TagType tag_type, SXML_CHAR* start, SXML_CHAR* end)
 {
@@ -219,7 +264,7 @@ XMLNode* XMLNode_allocN(int n)
 	return p;
 }
 
-XMLNode* XMLNode_new(const TagType tag_type, const char* tag, const char* text)
+XMLNode* XMLNode_new(const TagType tag_type, const SXML_CHAR* tag, const SXML_CHAR* text)
 {
 	XMLNode* node = XMLNode_alloc();
 	if (node == NULL)
@@ -541,12 +586,12 @@ int XMLNode_set_text(XMLNode* node, const SXML_CHAR* text)
 		return true;
 	}
 
-	p = __realloc(node->text, (sx_strlen(text) + 1)*sizeof(SXML_CHAR)); /* +1 for '\0' */
+	p = sx_strdup(text);
 	if (p == NULL)
 		return false;
+	if (node->text != NULL)
+		__free(node->text);
 	node->text = p;
-
-	sx_strcpy(node->text, text);
 
 	return true;
 }
@@ -648,9 +693,9 @@ int XMLNode_get_index(const XMLNode* node)
 	for (i = i_child = 0; i < node->father->n_children; i++) {
 		if (!node->father->children[i]->active)
 			continue;
-		i_child++;
 		if (node->father->children[i] == node)
 			return i_child;
+		i_child++;
 	}
 
 	return -2; /* Oops! */
@@ -823,9 +868,8 @@ int XMLDoc_init(XMLDoc* doc)
 		return false;
 
 	doc->filename[0] = NULC;
-#ifdef SXMLC_UNICODE
 	memset(&doc->bom, 0, sizeof(doc->bom));
-#endif
+	doc->sz_bom = 0;
 	doc->nodes = NULL;
 	doc->n_nodes = 0;
 	doc->i_root = -1;
@@ -980,6 +1024,8 @@ static int _XMLNode_print_header(const XMLNode* node, FILE* f, const SXML_CHAR* 
 	cur_sz_line += sx_fprintf(f, C2SX("<%s"), node->tag);
 
 	/* Print attributes */
+	if (attr_sep == NULL)
+		attr_sep = C2SX(" ");
 	for (i = 0; i < node->n_attributes; i++) {
 		if (!node->attributes[i].active)
 			continue;
@@ -993,12 +1039,8 @@ static int _XMLNode_print_header(const XMLNode* node, FILE* f, const SXML_CHAR* 
 			}
 		}
 		/* Attribute name */
-		if (attr_sep != NULL) {
-			sx_fputs(attr_sep, f);
-			cur_sz_line = _count_new_char_line(attr_sep, nb_char_tab, cur_sz_line);
-			sx_fprintf(f, C2SX("%s="), node->attributes[i].name);
-		} else
-			sx_fprintf(f, C2SX(" %s="), node->attributes[i].name);
+		cur_sz_line = _count_new_char_line(attr_sep, nb_char_tab, cur_sz_line);
+		sx_fprintf(f, C2SX("%s%s="), attr_sep, node->attributes[i].name);
 		
 		/* Attribute value */
 		(void)sx_fputc(XML_DEFAULT_QUOTE, f);
@@ -1029,10 +1071,10 @@ static int _XMLNode_print(const XMLNode* node, FILE* f, const SXML_CHAR* tag_sep
 	
 	if (node != NULL && node->tag_type==TAG_TEXT) { /* Text has to be printed: check if it is only spaces */
 		if (!keep_text_spaces) {
-			for (p = node->text; *p != NULC && sx_isspace(*p); p++) ; /* 'p' points to first non-space character, or to '\0' if only spaces */
+			for (p = node->text; p != NULL && *p != NULC && sx_isspace(*p); p++) ; /* 'p' points to first non-space character, or to '\0' if only spaces */
 		} else
 			p = node->text; /* '*p' won't be '\0' */
-		if (*p != NULC)
+		if (p != NULL && *p != NULC)
 			cur_sz_line += fprintHTML(f, node->text);
 		return cur_sz_line;
 	}
@@ -1086,10 +1128,8 @@ int XMLDoc_print_attr_sep(const XMLDoc* doc, FILE* f, const SXML_CHAR* tag_sep, 
 	if (doc == NULL || f == NULL || doc->init_value != XML_INIT_DONE)
 		return false;
 	
-#ifdef SXMLC_UNICODE
 	/* Write BOM if it exist */
 	if (doc->sz_bom > 0) fwrite(doc->bom, sizeof(unsigned char), doc->sz_bom, f);
-#endif
 
 	depth = -1; /* UGLY HACK: 'depth' forced negative on very first line so we don't print an extra 'tag_sep' (usually "\n") */
 	for (i = 0, cur_sz_line = 0; i < doc->n_nodes; i++) {
@@ -1129,7 +1169,7 @@ int XML_parse_attribute_to(const SXML_CHAR* str, int to, XMLAttribute* xmlattr)
 	}
 	
 	xmlattr->name = __malloc((n0+1)*sizeof(SXML_CHAR));
-	xmlattr->value = __malloc((to+1 - n1 - remQ + 1) * sizeof(SXML_CHAR));
+	xmlattr->value = __malloc((to+1 - n1 - 2*remQ + 1) * sizeof(SXML_CHAR)); /* 2*remQ because we expect 2 quotes */
 	xmlattr->active = true;
 	if (xmlattr->name != NULL && xmlattr->value != NULL) {
 		/* Copy name */
@@ -1138,7 +1178,7 @@ int XML_parse_attribute_to(const SXML_CHAR* str, int to, XMLAttribute* xmlattr)
 		/* (void)str_unescape(xmlattr->name); do not unescape the name */
 		/* Copy value (p starts after the quote (if any) and stops at the end of 'str'
 		  (skipping the quote if any, hence the '*(p+remQ)') */
-		for (i = 0, p = str + n1 + remQ; i + n1 + remQ < to && *(p+remQ) != NULC; i++, p++)
+		for (i = 0, p = str + n1 + remQ; i + n1 + 2*remQ < to && *(p+remQ) != NULC; i++, p++)
 			xmlattr->value[i] = *p;
 		xmlattr->value[i] = NULC;
 		(void)html2str(xmlattr->value, NULL); /* Convert HTML escape sequences, do not str_unescape(xmlattr->value) */
@@ -1171,7 +1211,7 @@ static TagType _parse_special_tag(const SXML_CHAR* str, int len, _TAG* tag, XMLN
 
 	node->tag = __malloc((len - tag->len_start - tag->len_end + 1)*sizeof(SXML_CHAR));
 	if (node->tag == NULL)
-		return TAG_NONE;
+		return TAG_ERROR;
 	sx_strncpy(node->tag, str + tag->len_start, len - tag->len_start - tag->len_end);
 	node->tag[len - tag->len_start - tag->len_end] = NULC;
 	node->tag_type = tag->tag_type;
@@ -1196,7 +1236,7 @@ TagType XML_parse_1string(const SXML_CHAR* str, XMLNode* xmlnode)
 	
 	/* Check for malformed string */
 	if (str[0] != C2SX('<') || str[len-1] != C2SX('>'))
-		return TAG_ERROR;
+		return TAG_NONE; /* Syntax error */
 
 	for (nn = 0; nn < NB_SPECIAL_TAGS; nn++) {
 		n = (int)_parse_special_tag(str, len, &_spec[nn], xmlnode);
@@ -1232,8 +1272,8 @@ TagType XML_parse_1string(const SXML_CHAR* str, XMLNode* xmlnode)
 	for (nn = 0; nn < _user_tags.n_tags; nn++) {
 		n = _parse_special_tag(str, len, &_user_tags.tags[nn], xmlnode);
 		switch (n) {
-			case TAG_ERROR:	return TAG_NONE;	/* Error => exit */
-			case TAG_NONE:	break;				/* Nothing found => do nothing */
+			case TAG_ERROR:	return TAG_ERROR;	/* Error => exit */
+			case TAG_NONE:	break;				/* Not this one */
 			default:		return (TagType)n;	/* Tag found => return it */
 		}
 	}
@@ -1260,7 +1300,7 @@ TagType XML_parse_1string(const SXML_CHAR* str, XMLNode* xmlnode)
 		
 		/* Check for XML end ('>' or '/>') */
 		if (str[n] == C2SX('>')) { /* Tag with children */
-			int type = (str[n-1] == '/' ? TAG_SELF : TAG_FATHER); /* TODO: Find something better to cope with <tag attr=v/> */
+			TagType type = (str[n-1] == '/' ? TAG_SELF : TAG_FATHER); /* TODO: Find something better to cope with <tag attr=v/> */
 			xmlnode->tag_type = type;
 			return type;
 		}
@@ -1280,11 +1320,12 @@ TagType XML_parse_1string(const SXML_CHAR* str, XMLNode* xmlnode)
 		pt[xmlnode->n_attributes].active = false;
 		xmlnode->n_attributes++;
 		xmlnode->attributes = pt;
-		while (*p != NULC && sx_isspace(*++p)) ; /* Skip spaces */
+		while (*++p != NULC && sx_isspace(*p)) ; /* Skip spaces */
 		if (isquote(*p)) { /* Attribute value starts with a quote, look for next one, ignoring protected ones with '\' */
 			for (nn = p-str+1; str[nn] && str[nn] != *p; nn++) { /* CHECK UNICODE "nn = p-str+1" */
 				/* if (str[nn] == C2SX('\\')) nn++; [bugs:#7]: '\' is valid in values */
 			}
+			nn++; //* Skip quote */
 		} else { /* Attribute value stops at first space or end of XML string */
 			for (nn = p-str+1; str[nn] != NULC && !sx_isspace(str[nn]) && str[nn] != C2SX('/') && str[nn] != C2SX('>'); nn++) ; /* Go to the end of the attribute value */ /* CHECK UNICODE */
 		}
@@ -1298,7 +1339,12 @@ TagType XML_parse_1string(const SXML_CHAR* str, XMLNode* xmlnode)
 			return TAG_ERROR; /* was TAG_PARTIAL */
 		}
 		
-		n = nn + 1;
+		n = nn + 1; /* Go to next attribute */
+		if (str[nn] == C2SX('>')) { /* ... or we migh have reached the end if no space is between the attribute value and the ">" or "/>" */
+			TagType type = (str[nn-1] == '/' ? TAG_SELF : TAG_FATHER); /* TODO: Find something better to cope with <tag attr=v/> */
+			xmlnode->tag_type = type;
+			return type;
+		}
 	}
 	
 	sx_fprintf(stderr, C2SX("\nWE SHOULD NOT BE HERE!\n[%s]\n\n"), str);
@@ -1336,7 +1382,7 @@ static int _parse_data_SAX(void* in, const DataSourceType in_type, const SAX_Cal
 		sd->line_num += ncr;
 
 		/* Get text for 'father' (i.e. what is before '<') */
-		while ((txt_end = sx_strchr(line, C2SX('<'))) == NULL) { /* '<' was not found, indicating a probable '>' inside text (should have been escaped with '&gt;' but we'll handle that ;) */
+		while ((txt_end = sx_strchr(line, C2SX('<'))) == NULL) { /* '<' was not found, indicating a probable '>' inside text (should have been escaped with '&gt;' but we'll handle that ;)) */
 			int n1 = read_line_alloc(in, in_type, &line, &sz, n0, 0, C2SX('>'), true, C2SX('\n'), &ncr); /* Go on reading the file from current position until next '>' */
 			sd->line_num += ncr;
 			if (n1 <= n0) {
@@ -1368,9 +1414,20 @@ static int _parse_data_SAX(void* in, const DataSourceType in_type, const SAX_Cal
 		/* First part of 'line' (before '<') is to be added to 'father->text' */
 		*txt_end = NULC; /* Have 'line' be the text for 'father' */
 		if (*line != NULC && (sax->new_text != NULL || sax->all_event != NULL)) {
-			if (sax->new_text != NULL && (exit = !sax->new_text(line, sd))) /* no str_unescape(line) */
+			SXML_CHAR* unhtml = line;
+			if (has_html(line)) {
+				unhtml = __malloc(sx_strlen(line) * sizeof(SXML_CHAR)); /* Allocate for HTML escaping */
+				if (unhtml == NULL) {
+					if (sax->on_error != NULL && !sax->on_error(PARSE_ERR_MEMORY, sd->line_num, sd))
+						break;
+					if (sax->all_event != NULL && !sax->all_event(XML_EVENT_ERROR, NULL, (SXML_CHAR*)sd->name, PARSE_ERR_MEMORY, sd))
+						break;
+				}
+				html2str(line, unhtml);
+			}
+			if (sax->new_text != NULL && (exit = !sax->new_text(unhtml, sd))) /* no str_unescape(line) */
 				break;
-			if (sax->all_event != NULL && (exit = !sax->all_event(XML_EVENT_TEXT, NULL, line, sd->line_num, sd)))
+			if (sax->all_event != NULL && (exit = !sax->all_event(XML_EVENT_TEXT, NULL, unhtml, sd->line_num, sd)))
 				break;
 		}
 		*txt_end = '<'; /* Restores tag start */
@@ -1570,7 +1627,7 @@ int DOMXMLDoc_node_text(SXML_CHAR* text, SAX_Data* sd)
 
 	/* If there is no current node to add text to, raise an error, except if text is only spaces, in which case it is probably just formatting */
 	if (dom->current == NULL) {
-		while(*p != NULC && sx_isspace(*p++)) ;
+		while(*p != NULC && sx_isspace(*p)) p++;
 		if (*p == NULC) /* Only spaces => probably pretty-printing */
 			return true;
 		dom->error = PARSE_ERR_TEXT_OUTSIDE_NODE;
@@ -1676,8 +1733,8 @@ int XMLDoc_parse_file_SAX(const SXML_CHAR* filename, const SAX_Callbacks* sax, v
 	C2SX("rt");
 #else
 	C2SX("rb"); /* In Unicode, open the file as binary so that further 'fgetwc' read all bytes */
-	BOM_TYPE bom;
 #endif
+	BOM_TYPE bom;
 
 
 	if (sax == NULL || filename == NULL || filename[0] == NULC)
@@ -1696,7 +1753,8 @@ int XMLDoc_parse_file_SAX(const SXML_CHAR* filename, const SAX_Callbacks* sax, v
 
 	sd.name = (SXML_CHAR*)filename;
 	sd.user = user;
-#ifdef SXMLC_UNICODE
+	sd.type = DATA_SOURCE_FILE;
+	sd.src  = (void*)f;
 	bom = freadBOM(f, NULL, NULL); /* Skip BOM, if any */
 	/* In Unicode, re-open the file in text-mode if there is no BOM (or UTF-8) as we assume that
 	   the file is "plain" text (i.e. 1 byte = 1 character). If opened in binary mode, 'fgetwc'
@@ -1709,7 +1767,14 @@ int XMLDoc_parse_file_SAX(const SXML_CHAR* filename, const SAX_Callbacks* sax, v
 		if (bom == BOM_UTF_8)
 			freadBOM(f, NULL, NULL); /* Skip the UTF-8 BOM that was found */
 	}
+#ifndef SXMLC_UNICODE
+	/* Unicode BOM when Unicode support has not been compiled in. */
+	else {
+		sx_fclose(f);
+		return false;
+	}
 #endif
+
 	ret = _parse_data_SAX((void*)f, DATA_SOURCE_FILE, sax, &sd);
 	(void)sx_fclose(f);
 
@@ -1726,6 +1791,8 @@ int XMLDoc_parse_buffer_SAX_len(const SXML_CHAR* buffer, int buffer_len, const S
 
 	sd.name = name;
 	sd.user = user;
+	sd.type = DATA_SOURCE_BUFFER;
+	sd.src  = (void*)buffer;
 	return _parse_data_SAX((void*)&dsb, DATA_SOURCE_BUFFER, sax, &sd);
 }
 
@@ -1741,8 +1808,7 @@ int XMLDoc_parse_file_DOM_text_as_nodes(const SXML_CHAR* filename, XMLDoc* doc, 
 	sx_strncpy(doc->filename, filename, SXMLC_MAX_PATH - 1);
 	doc->filename[SXMLC_MAX_PATH - 1] = NULC;
 
-	/* Read potential BOM on file, only when unicode is defined */
-#ifdef SXMLC_UNICODE
+	/* Read potential BOM on file */
 	{
 		/* In Unicode, open the file as binary so that further 'fgetwc' read all bytes */
 		FILE* f = sx_fopen(filename, C2SX("rb"));
@@ -1754,7 +1820,6 @@ int XMLDoc_parse_file_DOM_text_as_nodes(const SXML_CHAR* filename, XMLDoc* doc, 
 			sx_fclose(f);
 		}
 	}
-#endif
 
 	dom.doc = doc;
 	dom.current = NULL;
@@ -1888,6 +1953,32 @@ int _bgetc(DataSourceBuffer* ds)
 	return (int)(ds->buf[ds->cur_pos++]);
 }
 
+/*
+ * \brief Read a "line" from data source, eventually (re-)allocating a given buffer. A "line" is defined
+ * as a portion starting with character `from` (usually `<`) ending at character `to` (usually `>`).
+ *
+ * Characters read will be stored in `line` starting at `i0` (this allows multiple calls to
+ * `read_line_alloc()` on the same `line` buffer without overwriting it at each call).
+ * Searches for character `from` until character `to`. If `from` is 0, starts from
+ * current position in the data source. If `to` is 0, it is replaced by `\n`.
+ *
+ * \param in The data source (either `FILE*` if `in_type` is `DATA_SOURCE_FILE` or `SXML_CHAR*`
+ * 		if `in_type` is `DATA_SOURCE_BUFFER`).
+ * \param in_type specifies the type of data source to be read.
+ * \param line can be `NULL`, in which case it will be allocated to `*sz_line` bytes. After the function
+ * 		returns, `*sz_line` is the actual buffer size. This allows multiple calls to this function using
+ * 		the same buffer (without re-allocating/freeing).
+ * \param sz_line is the size of the buffer `line` if previously allocated (in `SXML_CHAR`, not byte!).
+ * 		If `NULL` or 0, an internal value of `MEM_INCR_RLA` is used.
+ * \param i0 The position where read characters are stored in `line`.
+ * \param from The character indicating a start of line.
+ * \param to The character indicating an end of line.
+ * \param keep_fromto if 0, removes characters `from` and `to` from the line (stripping).
+ * \param interest is a special character of interest, usually `'\n'` so we can count line numbers in the
+ * 		data source (valid only if `interest_count` is not `NULL`).
+ * \param interest_count if not `NULL`, will receive the count of `interest` characters while searching.
+ * \returns the number of characters in the line or 0 if an error occurred.
+ */
 int read_line_alloc(void* in, DataSourceType in_type, SXML_CHAR** line, int* sz_line, int i0, SXML_CHAR from, SXML_CHAR to, int keep_fromto, SXML_CHAR interest, int* interest_count)
 {
 	int init_sz = 0;
@@ -2100,8 +2191,6 @@ int split_left_right(SXML_CHAR* str, SXML_CHAR sep, int* l0, int* l1, int* i_sep
 	} else {
 		n0 = 0;
 		for (n1 = 0; str[n1] != NULC && str[n1] != sep; n1++) ; /* Search for separator only */
-		if (str[n1] != sep) /* Separator not found: malformed string */
-			return false;
 		is = n1;
 	}
 
@@ -2159,7 +2248,7 @@ BOM_TYPE freadBOM(FILE* f, unsigned char* bom, int* sz_bom)
 	if (f == NULL)
 		return BOM_NONE;
 
-	/* Save position and try to read and skip BOM if found. If not, go back to save position. */
+	/* Save position and try to read and skip BOM if found. If not, go back to saved position. */
 	pos = ftell(f);
 	if (pos < 0)
 		return BOM_NONE;
@@ -2193,7 +2282,7 @@ BOM_TYPE freadBOM(FILE* f, unsigned char* bom, int* sz_bom)
 					*sz_bom = 4;
 				return BOM_UTF_32LE;
 			}
-			fseek(f, pos, SEEK_SET); /* fseek(f, -2, SEEK_CUR) is not garanteed on Windows (and actually fail in Unicode...) */
+			fseek(f, pos, SEEK_SET); /* fseek(f, -2, SEEK_CUR) is not garanteed on Windows (and actually fails in Unicode...) */
 			return BOM_UTF_16LE;
 
 		case (unsigned short)0x0000:
@@ -2237,6 +2326,19 @@ BOM_TYPE freadBOM(FILE* f, unsigned char* bom, int* sz_bom)
 }
 
 /* --- */
+
+int has_html(SXML_CHAR* html)
+{
+	if (html == NULL || *html == NULC)
+		return false;
+
+	do {
+		if (*html++ == C2SX('&'))
+			return true;
+	} while (*html);
+	
+	return false;
+}
 
 SXML_CHAR* html2str(SXML_CHAR* html, SXML_CHAR* str)
 {

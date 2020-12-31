@@ -1074,6 +1074,24 @@ void test_xlsx_read_cell(void) {
   TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
   TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
 
+  // J4, Text (Unicode), 𐐀34
+  xlsx_read_cell(sheet_1, 4, "J", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(49, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TEXT, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING(u8"𐐀34", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.sheetdata_child_i);
+
+  // J5, Text (Unicode), foo你bar好qaz
+  xlsx_read_cell(sheet_1, 5, "J", &cell_data_holder);
+  TEST_ASSERT_EQUAL_INT(49, cell_data_holder.style->style_id);
+  TEST_ASSERT_EQUAL_INT(XLSX_TEXT, cell_data_holder.style->related_type);
+  TEST_ASSERT_EQUAL_INT(XLSX_POINTER_TO_CHAR, cell_data_holder.value_type);
+  TEST_ASSERT_EQUAL_STRING(u8"foo你bar好qaz", cell_data_holder.value.pointer_to_char_value);
+  TEST_ASSERT_EQUAL_INT(5, sheet_1->last_row_looked.row_n);
+  TEST_ASSERT_EQUAL_INT(4, sheet_1->last_row_looked.sheetdata_child_i);
+
   // K2, Special, 02000 (Typed 2000)
   xlsx_read_cell(sheet_1, 2, "K", &cell_data_holder);
   TEST_ASSERT_EQUAL_INT(204, cell_data_holder.style->style_id);

@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.5-alpha] - 2020-12-31
+### Added
+- Added a few tests for unicode (UTF-8) support.
+  
+### Updated
+- Libraries used: zip 0.1.20 -> 0.1.21; sxmlc 4.3.0 -> 4.5.1.
+
 ## [0.1.4-alpha] - 2020-12-29
 ### Fixed
 - Explicit typecast made on several long values that have been assigned to int holders.
