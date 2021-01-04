@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8-alpha] - 2020-01-04
+### Fixed
+- When a cell has no value, but style set, it was triggering problems. Code has been written to take this into account.
+
 ## [0.1.7-alpha] - 2020-01-04
 ### Added
 - Unit tests to test empty cells.

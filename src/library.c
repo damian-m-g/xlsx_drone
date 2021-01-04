@@ -886,6 +886,11 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
       cell_data_holder->value.pointer_to_char_value = cell->children[cell->n_children - 1]->text;
     }
 
+  } else if(cell->n_children == 0) {
+
+    // it has not value (i.e.: a cell that has a style set, but no value will still appear in sheet.xml)
+    return;
+
   } else {
 
     // it's not a string, check if has value
