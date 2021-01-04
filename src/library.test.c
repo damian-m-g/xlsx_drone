@@ -1153,6 +1153,16 @@ void test_xlsx_read_cell(void) {
   TEST_ASSERT_EQUAL_INT(3, sheet_1->last_row_looked.row_n);
   TEST_ASSERT_EQUAL_INT(2, sheet_1->last_row_looked.sheetdata_child_i);
 
+  // Empty cell
+  xlsx_read_cell(sheet_1, 13, "D", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_NULL, cell_data_holder.value_type);
+
+  // Empty cell
+  xlsx_read_cell(sheet_1, 50, "A", &cell_data_holder);
+  TEST_ASSERT_NULL(cell_data_holder.style);
+  TEST_ASSERT_EQUAL_INT(XLSX_NULL, cell_data_holder.value_type);
+
   // teardown
   xlsx_close(&wb);
 }

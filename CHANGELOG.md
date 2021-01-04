@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7-alpha] - 2020-01-04
+### Added
+- Unit tests to test empty cells.
+
 ## [0.1.6-alpha] - 2020-01-04
 ### Changed
 - Error reporting system. As suggested by the web, I'm not using anymore errno error system to give info about an error
