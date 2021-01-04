@@ -17,6 +17,14 @@ void xlsx_set_print_err_messages(int flag) {
   xlsx_print_err_messages = flag;
 }
 
+/*
+* summary:
+*   Useful to understand what went wrong in functions that failed. Compare this returned value against error codes
+*   related to the failing function.
+*/
+int xlsx_get_xlsx_errno(void) {
+  return xlsx_errno;
+}
 
 /*
 * params:
@@ -24,16 +32,16 @@ void xlsx_set_print_err_messages(int flag) {
 *   - xlsx: handler. It will be written with data gathered after deploying the XLSX.
 * returns:
 *   - 1: everything went OK.
-*   - 0: the process FAILED. Compare errno against enum xlsx_open_errno to know why.
+*   - 0: the process FAILED. Compare xlsx_errno against enum xlsx_open_errno to know why.
 */
 int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 {
-  XLSX_SET_ERRNO(0);
+  xlsx_errno = 0;
 
   if(!src || !xlsx) {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: Malformed parameters.\n");
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_MALFORMED_PARAMS);
+    xlsx_errno = XLSX_OPEN_ERRNO_MALFORMED_PARAMS;
     return 0; // FAIL
   }
 
@@ -46,7 +54,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   int deployed_xlsx_path_len = strlen(temp_path) + strlen(temp_folder);
   char *deployed_xlsx_path = malloc(sizeof(char) * (deployed_xlsx_path_len + 1));
   if(!deployed_xlsx_path) {
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+    xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
     return 0; // FAIL
   }
   strcpy(deployed_xlsx_path, temp_path);
@@ -59,7 +67,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     free(deployed_xlsx_path);
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: \"%s\" couldn't be deployed.\n", src);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE);
+    xlsx_errno = XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE;
     return 0; // FAIL
   }
 
@@ -69,7 +77,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   // load sharedStrings.xml
   if(!(xlsx->shared_strings_xml = malloc(sizeof(XMLDoc)))) {
     xlsx_close(xlsx);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+    xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
     return 0; // FAIL
   }
   XMLDoc_init(xlsx->shared_strings_xml);
@@ -94,7 +102,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     xlsx_close(xlsx);
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: \"%s\" can't be parsed or doesn't exist.\n", REL_PATH_TO_STYLES);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+    xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
     return 0; // FAIL
   }
 
@@ -107,7 +115,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   if(!cell_xfs_node) {
     xlsx_close(xlsx);
     fprintf(stderr, "XLSX_C ERROR: \"%s\" node can't be found on \"%s\".\n", STYLES_CELLXFS_TAG, REL_PATH_TO_STYLES);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+    xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
     return 0; // FAIL
   }
 
@@ -115,7 +123,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   xlsx->n_styles = cell_xfs_node->n_children;
   if(!(xlsx->styles = calloc(cell_xfs_node->n_children, sizeof(xlsx_style_t *)))) {
     xlsx_close(xlsx);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+    xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
     return 0; // FAIL
   }
 
@@ -128,7 +136,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     // allocate memory for this style
     if(!(xlsx->styles[xf_index] = malloc(sizeof(xlsx_style_t)))) {
       xlsx_close(xlsx);
-      XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+      xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
       return 0; // FAIL
     }
     // zero initialize all its fields that need memory allocation
@@ -147,7 +155,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       if(xlsx_print_err_messages)
         fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" children over \"%s\".\n",
               STYLES_NUMFMTID_ATTR_NAME, STYLES_CELLXFS_TAG, REL_PATH_TO_STYLES);
-      XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+      xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
       return 0; // FAIL
     }
     // once *xf_node_numfmtid_value* was found, see if it points to the predefined ones,
@@ -169,7 +177,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         if(xlsx_print_err_messages)
           fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" with \"%s\" equal to \"%s\" in \"%s\".\n",
           STYLES_NUMFMT_TAG, STYLES_NUMFMTID_ATTR_NAME, xf_node_numfmtid_value, REL_PATH_TO_STYLES);
-        XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+        xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
         return 0; // FAIL
       }
       for(attr_index = (num_fmt_node->n_attributes - 1); attr_index >= 0; --attr_index) {
@@ -177,7 +185,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
           format_code_length = strlen(num_fmt_node->attributes[attr_index].value);
           if(!(xlsx->styles[xf_index]->format_code = malloc(sizeof(char) * (format_code_length + 1)))) {
             xlsx_close(xlsx);
-            XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+            xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
             return 0; // FAIL
           }
           strcpy(xlsx->styles[xf_index]->format_code, num_fmt_node->attributes[attr_index].value);
@@ -192,7 +200,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         if(xlsx_print_err_messages)
           fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" elements over \"%s\".\n",
           STYLES_FORMATCODE_ATTR_NAME, STYLES_NUMFMT_TAG, REL_PATH_TO_STYLES);
-        XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+        xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
         return 0; // FAIL
       }
     }
@@ -208,7 +216,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     xlsx_close(xlsx);
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: \"%s\" can't be parsed or doesn't exist.\n", REL_PATH_TO_WORKBOOK);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+    xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
     return 0; // FAIL
   }
   // look for sheet elements
@@ -221,14 +229,14 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" element inside \"%s\".\n",
       WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+    xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
     return 0; // FAIL
   }
 
   xlsx->n_sheets = sheets_node->n_children;
   if(!(xlsx->sheets = malloc(sheets_node->n_children * sizeof(xlsx_sheet_t *)))) {
     xlsx_close(xlsx);
-    XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+    xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
     return 0; // FAIL
   }
 
@@ -236,7 +244,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   for(sheet_index = 0; sheet_index < sheets_node->n_children; ++sheet_index) {
     if(!(xlsx->sheets[sheet_index] = malloc(sizeof(xlsx_sheet_t)))) {
       xlsx_close(xlsx);
-      XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+      xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
       return 0; // FAIL
     }
     // initialize all members of this *xlsx_sheet_t* struct
@@ -247,7 +255,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         if(!(xlsx->sheets[sheet_index]->name = \
           malloc(strlen(sheets_node->children[sheet_index]->attributes[attr_index].value) + 1))) {
             xlsx_close(xlsx);
-            XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_OUT_OF_MEMORY);
+            xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
             return 0; // FAIL
           }
         strcpy(xlsx->sheets[sheet_index]->name, sheets_node->children[sheet_index]->attributes[attr_index].value);
@@ -259,7 +267,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       if(xlsx_print_err_messages)
         fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" children over \"%s\".\n",
               WORKBOOK_NAME_ATTR_NAME, WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
-      XLSX_SET_ERRNO(XLSX_OPEN_ERRNO_XML_PARSING_ERROR);
+      xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
       return 0; // FAIL
     }
   }
@@ -276,17 +284,17 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 *   - sheet_number: sheet index, the first sheet is the 1, and so on. Pass 0 if you pass a valid *sheet_name*.
 *   - sheet_name: sheet name string. Pass NULL if you're passing a valid *sheet_number*.
 * returns:
-*   - NULL: FAIL. Check errno and compare it against enum xlsx_load_sheet_errno to know what happened.
+*   - NULL: FAIL. Check xlsx_errno and compare it against enum xlsx_load_sheet_errno to know what happened.
 *   - xlsx_sheet_t *: SUCCESS.
 */
 xlsx_sheet_t * xlsx_load_sheet(const xlsx_workbook_t *deployed_xlsx, int sheet_number, const char *sheet_name)
 {
-  XLSX_SET_ERRNO(0);
+  xlsx_errno = 0;
 
   if((sheet_number <= 0) && (!sheet_name)) {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: Malformed parameters.\n");
-    XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_MALFORMED_PARAMS);
+    xlsx_errno = XLSX_LOAD_SHEET_ERRNO_MALFORMED_PARAMS;
     return NULL; // FAIL
   }
 
@@ -307,7 +315,7 @@ xlsx_sheet_t * xlsx_load_sheet(const xlsx_workbook_t *deployed_xlsx, int sheet_n
       // index out of bounds
       if(xlsx_print_err_messages)
         fprintf(stderr, "XLSX_C ERROR: Index out of bounds.\n");
-      XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_INDEX_OUT_OF_BOUNDS);
+      xlsx_errno = XLSX_LOAD_SHEET_ERRNO_INDEX_OUT_OF_BOUNDS;
       return NULL; // FAIL
     }
   }
@@ -331,7 +339,7 @@ xlsx_sheet_t * xlsx_load_sheet(const xlsx_workbook_t *deployed_xlsx, int sheet_n
     // if you reach this line, then there's no sheet with such name
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: There's no sheet named \"%s\".\n", sheet_name);
-    XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_NON_EXISTENT);
+    xlsx_errno = XLSX_LOAD_SHEET_ERRNO_NON_EXISTENT;
     return NULL; // FAIL
   }
 
@@ -340,7 +348,7 @@ xlsx_sheet_t * xlsx_load_sheet(const xlsx_workbook_t *deployed_xlsx, int sheet_n
   {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: Malformed parameters.\n");
-    XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_MALFORMED_PARAMS);
+    xlsx_errno = XLSX_LOAD_SHEET_ERRNO_MALFORMED_PARAMS;
     return NULL; // FAIL
   }
 }
@@ -382,8 +390,6 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet) {
 *   - cell_data_holder: read data will be written here, read it after the function returns.
 * notes:
 *   This function prioritizes speed over other concerns.
-*   It doesn't set errno to 0 at the beginning, but may write to it only if runs OUT OF MEMORY, which is VERY rare
-*   to happen because has ways to prevent this problem by for example, cleaning the cache.
 *   *cell_data_holder* will have an xlsx_value_type equal to XLSX_NULL if the cell has not content at all.
 */
 void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_cell_t *cell_data_holder) {
@@ -392,7 +398,7 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
   if(!sheet->sheet_xml) {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: The sheet isn't loaded.\n");
-    XLSX_SET_ERRNO(XLSX_READ_CELL_ERRNO_SHEET_NOT_LOADED);
+    xlsx_errno = XLSX_READ_CELL_ERRNO_SHEET_NOT_LOADED;
     return;
   }
 
@@ -400,7 +406,7 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
   if(strlen(column) > 4) {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: *column* must be a null terminated char array, with no more than 4 chars.\n");
-    XLSX_SET_ERRNO(XLSX_READ_CELL_ERRNO_MALFORMED_PARAMS);
+    xlsx_errno = XLSX_READ_CELL_ERRNO_MALFORMED_PARAMS;
     return;
   }
 
@@ -696,13 +702,13 @@ static xlsx_formatter get_formatter(const char *format_code, int current_analyze
 *   - sheet_number: sheet index among all existent sheets.
 *   - sheet: the sheet data container.
 * returns:
-*   - 0: FAIL. Check errno and compare it against enum xlsx_load_sheet_errno to know what happened.
+*   - 0: FAIL. Check xlsx_errno and compare it against enum xlsx_load_sheet_errno to know what happened.
 *   - 1: SUCCESS.
 */
 static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
   XMLDoc *sheet_xml = malloc(sizeof(XMLDoc));
   if(!sheet_xml) {
-    XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_OUT_OF_MEMORY);
+    xlsx_errno = XLSX_LOAD_SHEET_ERRNO_OUT_OF_MEMORY;
     return 0; // FAIL
   }
 
@@ -721,7 +727,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
     free(sheet_xml);
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: \"%s\" can't be parsed or doesn't exist.\n", path_to_sheet);
-    XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR);
+    xlsx_errno = XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR;
     return 0; // FAIL
   }
 
@@ -736,7 +742,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" element inside #\"%d\" sheet.\n",
               SHEET_SHEETDATA_TAG, sheet_number);
-    XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR);
+    xlsx_errno = XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR;
     return 0; // FAIL
   }
 
@@ -764,7 +770,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
           if(xlsx_print_err_messages)
             fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" attribute, inside node \"%s\", inside #\"%d\" sheet.\n",
                     SHEET_ROW_ATTR_NAME, SHEET_ROW_TAG, sheet_number);
-          XLSX_SET_ERRNO(XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR);
+          xlsx_errno = XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR;
           return 0; // FAIL
         }
         break;
@@ -877,7 +883,6 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
       }
     } else {
       // it's an inlineStr or an error. An error doesn't have style associated.
-      // WARNING: I couldn't find a use case where inlineStr gets used to see if could have any style associated
       cell_data_holder->value.pointer_to_char_value = cell->children[cell->n_children - 1]->text;
     }
 

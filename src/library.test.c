@@ -7,7 +7,14 @@ void tearDown(void) {}
 
 
 void test_xlsx_open(void) {
+  // ATTENTION: pass 1 to show error output, 0 if not needed
+  xlsx_set_print_err_messages(0);
+
   xlsx_workbook_t wb;
+
+  // non-existent path
+  TEST_ASSERT_EQUAL_INT(0, xlsx_open("test\\helpers\\non_existent.xlsx", &wb));
+  TEST_ASSERT_EQUAL_INT(-3, xlsx_get_xlsx_errno());
 
   TEST_ASSERT_EQUAL_INT(1, xlsx_open("test\\helpers\\empty_sample.xlsx", &wb));  // ATTENTION: Must be closed
   // an empty sample has no shared strings xml (nor a file w/o strings)

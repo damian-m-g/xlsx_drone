@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.6-alpha] - 2020-01-04
+### Changed
+- Error reporting system. As suggested by the web, I'm not using anymore errno error system to give info about an error
+since that system is supposed to be used only by the OS. Now I'm using a custom one setting xlsx_errno static global
+variable, accessible through xlsx_get_xlsx_errno().
+  
+### Added
+- Unit test regarding error reporting system change.
+
+### Fixed
+- Manually fixed problems with the zip library (since were acknowledge by the maker but didn't release a new version).
+The function that opens and deploy the zip weren't returning a negative number if fails under certain circumstances.
+
 ## [0.1.5-alpha] - 2020-12-31
 ### Added
 - Added a few tests for unicode (UTF-8) support.

@@ -123,6 +123,7 @@ typedef struct xlsx_cell_t {
 
 
 // global variables
+static int xlsx_errno;
 static xlsx_cell_kind xlsx_predefined_style_types[AMOUNT_OF_PREDEFINED_STYLE_TYPES] = {
   XLSX_UNKNOWN, // 0
   XLSX_NUMBER, // 1
