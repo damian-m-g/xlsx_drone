@@ -1,0 +1,8 @@
+.idea/
+_in/
+cmake-build-debug/
+cmake-build-debug-mingw/
+doc/
+temp/
+!temp/keep
+PROGRAMMERNOTES.md

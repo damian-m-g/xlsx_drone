@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2020-01-10
+### Added
+- Documentation on the header.
+- Several assertions on test_xlsx_load_sheet().
+- README.md
+- LICENSE
+
+### Changed
+- Some variables were renamed to reflect Excel naming.
+- Error codes so they are unique.
+- xlsx_read_cell() return. Now returns 1 or 0 depending on success or failure.
+- Some code style towards simpleness.
+
 ## [0.1.8-alpha] - 2020-01-04
 ### Fixed
 - When a cell has no value, but style set, it was triggering problems. Code has been written to take this into account.

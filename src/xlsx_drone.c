@@ -1,6 +1,6 @@
 // includes
 // this library header
-#include "library.h"
+#include "xlsx_drone.h"
 
 
 // functions
@@ -66,7 +66,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   if(zip_extract(src, deployed_xlsx_path, NULL, NULL) != 0) {
     free(deployed_xlsx_path);
     if(xlsx_print_err_messages)
-      fprintf(stderr, "XLSX_C ERROR: \"%s\" couldn't be deployed.\n", src);
+      fprintf(stderr, "XLSX_C ERROR: \"%s\" couldn't be deployed. Check that the file isn't already opened.\n", src);
     xlsx_errno = XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE;
     return 0; // FAIL
   }
@@ -164,7 +164,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     xlsx->styles[xf_index]->style_id = xf_node_numfmtid_value_as_int;
     if(xf_node_numfmtid_value_as_int < AMOUNT_OF_PREDEFINED_STYLE_TYPES) {
       // predefined style
-      xlsx->styles[xf_index]->related_type = xlsx_predefined_style_types[xf_node_numfmtid_value_as_int];
+      xlsx->styles[xf_index]->related_category = xlsx_predefined_style_types[xf_node_numfmtid_value_as_int];
       // note that next value could be NULL
       xlsx->styles[xf_index]->format_code = xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
     } else {
@@ -189,9 +189,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
             return 0; // FAIL
           }
           strcpy(xlsx->styles[xf_index]->format_code, num_fmt_node->attributes[attr_index].value);
-          // find out what kind of type this style is, inspecting its formatCode
-          xlsx->styles[xf_index]->related_type = \
-            get_related_type(xlsx->styles[xf_index]->format_code, format_code_length);
+          // find out what kind of category this style is, inspecting its formatCode
+          xlsx->styles[xf_index]->related_category = \
+            get_related_category(xlsx->styles[xf_index]->format_code, format_code_length);
           break;
         }
       }
@@ -388,18 +388,21 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet) {
 *   - row: cell row.
 *   - column: cell column.
 *   - cell_data_holder: read data will be written here, read it after the function returns.
+* returns:
+*   - 1: everything went OK.
+*   - 0: the process FAILED. Compare xlsx_errno against enum xlsx_read_cell_errno to know why.
 * notes:
 *   This function prioritizes speed over other concerns.
 *   *cell_data_holder* will have an xlsx_value_type equal to XLSX_NULL if the cell has not content at all.
 */
-void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_cell_t *cell_data_holder) {
+int xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_cell_t *cell_data_holder) {
 
   // the sheet must be loaded
   if(!sheet->sheet_xml) {
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: The sheet isn't loaded.\n");
     xlsx_errno = XLSX_READ_CELL_ERRNO_SHEET_NOT_LOADED;
-    return;
+    return 0;
   }
 
   // if non-sense parameter, return
@@ -407,7 +410,7 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: *column* must be a null terminated char array, with no more than 4 chars.\n");
     xlsx_errno = XLSX_READ_CELL_ERRNO_MALFORMED_PARAMS;
-    return;
+    return 0;
   }
 
   // reset *cell_data_holder*
@@ -453,6 +456,8 @@ void xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_
       }
     }
   }
+
+  return 1;
 }
 
 
@@ -559,23 +564,23 @@ static void init_xlsx_sheet_t_struct(xlsx_sheet_t *sheet, xlsx_workbook_t *deplo
 *     - XLSX_TIME
 *     - XLSX_DATE_TIME
 */
-static xlsx_cell_kind get_related_type(const char *format_code, int format_code_length) {
+static xlsx_cell_category get_related_category(const char *format_code, int format_code_length) {
   // *m_found* means an 'm' char found, it's ambiguous between date and time
   int current_analyzed_index, is_date = 0, is_time = 0, m_found = 0;
   for(current_analyzed_index = 0; current_analyzed_index < format_code_length; ++current_analyzed_index) {
 
     // note that this could also return XLSX_FORMATTER_UNKNOWN
     switch(get_formatter(format_code, current_analyzed_index)) {
-      case XLSX_FORMATTER_AMBIGUOUS_M: {
+      case XLSX_FORMATTER_AMBIGUOUS_M:
         m_found = true;
         break;
-      } case XLSX_FORMATTER_TIME: {
+      case XLSX_FORMATTER_TIME:
         is_time = true;
         break;
-      } case XLSX_FORMATTER_DATE: {
+      case XLSX_FORMATTER_DATE:
         is_date = true;
         break;
-      } default: {}
+      default: {}
     }
 
     if(is_date && is_time)
@@ -861,7 +866,7 @@ static XMLNode * find_cell_node(XMLNode *row, const char *cell) {
 *   *cell_data_holder* will have:
 *     - style == NULL && value_type == XLSX_POINTER_TO_CHAR when is TEXT
 *     - style == NULL && value_type != XLSX_POINTER_TO_CHAR && value_type != XLSX_NULL when is NUMBER
-*     - if style != NULL, inspect style.related_type to see what it is
+*     - if style != NULL, inspect style.related_category to see what it is
 */
 static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t * cell_data_holder) {
 
