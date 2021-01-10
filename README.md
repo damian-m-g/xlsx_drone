@@ -1,7 +1,8 @@
 # xlsx_drone
 
-![](https://img.shields.io/endpoint?url=https%3A//gist.githubusercontent.com/IgorJorobus/362840022499885806ad277f9d26ab99/raw/b3f375ce2433d2b9c64baa2853a2cf0d35deaed7/gcov.json)
-![](https://img.shields.io/endpoint?url=https%3A//gist.githubusercontent.com/IgorJorobus/0a91b9186b72bff47cd5b93f656d69f6/raw/ea0674cd21903bbedb7bcee80cda2535307f3602/assertions.json)
+![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/gcov.json)
+![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/test_suite.json)
+![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/assertions.json)
 ![](https://img.shields.io/badge/C%20standard-C11-informational)
 
 Fast _Microsoft Excel's_ **\*.xlsx** reader.
@@ -112,7 +113,7 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet);
 
 The rest of the public functions will return 0 or NULL if fail, and 1 or a valid pointer for success. When they return 0 or NULL, you can check `xlsx_errno` and compare it against the respective error values of the function.
 
-**For full documentation of the API, check _src/xlsx_drone.h_.**
+**For full documentation of the API, check [_src/xlsx_drone.h_](https://github.com/damian-m-g/xlsx_drone/blob/master/src/xlsx_drone.h).**
 
 ## Project Status
 
@@ -127,6 +128,6 @@ The rest of the public functions will return 0 or NULL if fail, and 1 or a valid
 
 ## License
 
-#### [MIT](TODO: ...)
+#### [MIT](https://github.com/damian-m-g/xlsx_drone/blob/master/LICENSE)
 
 
