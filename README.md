@@ -1,9 +1,9 @@
 # xlsx_drone
 
-![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/gcov.json)
-![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/test_suite.json)
-![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/assertions.json)
-![](https://img.shields.io/badge/C%20standard-C11-informational)
+[![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/gcov.json)](#)
+[![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/test_suite.json)](#)
+[![](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/damian-m-g/xlsx_drone/master/data/shields/assertions.json)](#)
+[![](https://img.shields.io/badge/C%20standard-C11-informational)](#)
 
 Fast _Microsoft Excel's_ **\*.xlsx** reader.
 
@@ -89,7 +89,7 @@ typedef enum xlsx_cell_category {
 
 ...which is a summary of what can be set in Excel:
 
-![](data/README.md_images/7f067bd3.png)
+[![](data/README.md_images/7f067bd3.png)](#)
 
 Note that:
 
