@@ -127,6 +127,7 @@ The rest of the public functions will return 0 or NULL if fail, and 1 or a valid
 All ideas about new implementations are thoroughly thought to keep the essence of the library, which is to be fast and simple. Hence, next TODOs could be taken into account or dismissed based on that.
 
 - Consider make xlsx_open() work independently of having the *.xlsx opened (grabbed) or closed. 
+- Consider provide a function that tells the last column used of certain sheet (implementation difficulty: 8/10).
 
 ## Credits & Thanks
 
