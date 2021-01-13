@@ -15,6 +15,7 @@ Fast _Microsoft Excel's_ **\*.xlsx** reader.
     * [Essential](#essential)
     * [Extended](#extended)
 * [Project Status](#project-status)
+* [TODO](#todo)  
 * [Credits & Thanks](#credits--thanks)
 * [License](#license)
 
@@ -120,6 +121,12 @@ The rest of the public functions will return 0 or NULL if fail, and 1 or a valid
 - [x] Reading capabilities for ASCII
 - [x] Reading capabilities for UTF-8
 - [ ] Writting capabilities (WIP)
+
+## TODO
+
+All ideas about new implementations are thoroughly thought to keep the essence of the library, which is to be fast and simple. Hence, next TODOs could be taken into account or dismissed based on that.
+
+- Consider make xlsx_open() work independently of having the *.xlsx opened (grabbed) or closed. 
 
 ## Credits & Thanks
 
