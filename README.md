@@ -14,6 +14,7 @@ Fast _Microsoft Excel's_ **\*.xlsx** reader.
 * [Usage](#usage)
     * [Essential](#essential)
     * [Extended](#extended)
+* [Bindings](#bindings)  
 * [Project Status](#project-status)
 * [TODO](#todo)  
 * [Credits & Thanks](#credits--thanks)
@@ -115,6 +116,10 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet);
 The rest of the public functions will return 0 or NULL if fail, and 1 or a valid pointer for success. When they return 0 or NULL, you can check `xlsx_errno` and compare it against the respective error values of the function.
 
 **For full documentation of the API, check [_src/xlsx_drone.h_](https://github.com/damian-m-g/xlsx_drone/blob/master/src/xlsx_drone.h).**
+
+## Bindings
+
+Using foreign function calls, a [binding to **Ruby**](https://github.com/damian-m-g/xlsx_drone_rb) was made.
 
 ## Project Status
 
