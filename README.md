@@ -132,7 +132,7 @@ Using foreign function calls, a [binding to **Ruby**](https://github.com/damian-
 All ideas about new implementations are thoroughly thought to keep the essence of the library, which is to be fast and simple. Hence, next TODOs could be taken into account or dismissed based on that.
 
 - Consider make xlsx_open() work independently of having the *.xlsx opened (grabbed) or closed. 
-- Consider provide a function that tells the last column used of certain sheet (implementation difficulty: 8/10).
+- [Consider provide a function that tells the last column used of certain sheet (implementation difficulty: 8/10).](https://github.com/damian-m-g/xlsx_drone/issues/1)
 
 ## Credits & Thanks
 
