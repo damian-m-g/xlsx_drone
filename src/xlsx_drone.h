@@ -1,7 +1,7 @@
 /*
 * xlsx_drone - Copyright (c) 2021, Damian M. Gonzalez.
 * Released under MIT license, please refer to LICENSE file for details.
-* VERSION: 0.1.9
+* VERSION: 0.2.0
 */
 #ifndef PORCUPINE_LIBRARY_H
 #define PORCUPINE_LIBRARY_H
@@ -101,6 +101,7 @@ typedef struct xlsx_sheet_t {
   XMLDoc *sheet_xml;
   XMLNode *sheetdata; // speeding purpose
   int last_row;
+  char *last_column;
   struct xlsx_reference_to_row_t last_row_looked; // speeding purpose
 } xlsx_sheet_t;
 
@@ -309,6 +310,27 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet);
 
 /*
 * summary:
+*   As to actually get the last column with a non-empty value requires some effort (run-time), it is not gathered in
+*   xlsx_load_sheet(). This is because maybe you already know what columns are you interested in, and it could be
+*   superflous to get the last column used.
+*   So after the first time you call this function, sheet->last_column gets value, and then, you can directly ask for
+*   sheet->last_column, or you can keep calling xlsx_get_last_column(), your choice.
+* params:
+*   sheet: A loaded sheet.
+* returns:
+*   A string with the last column value, i.e.: "AF", or "B", etc. Or, will return NULL if:
+*     * an error happened. Check xlsx_errno against xlsx_get_last_column_errno values, that will be 0 if were no error.
+*     * the sheet is empty.
+*/
+char* xlsx_get_last_column(xlsx_sheet_t *sheet);
+
+enum xlsx_get_last_column_errno {
+  XLSX_GET_LAST_COLUMN_ERRNO_SHEET_NOT_LOADED = -31,
+  XLSX_GET_LAST_COLUMN_ERRNO_OUT_OF_MEMORY = -32
+};
+
+/*
+* summary:
 *   Uses *cell_data_holder* as carrier of the content read. This function zero-initialize all its fields, so you don't
 *   have to do it. This means that you can pass the same structure over and over again, in fact, this is the
 *   recommended way to go, because, as you can see, a cell_data_holder reserves a lot of memory. This was thought to
@@ -356,5 +378,6 @@ static XMLNode * find_cell_node(XMLNode *row, const char *cell);
 static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t * cell_data_holder);
 static int delete_folder(const char *folder_path);
 static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *cell_data_holder);
+static void withdraw_alphabetic_chars(const char *s_input, char s_output[5]);
 
 #endif

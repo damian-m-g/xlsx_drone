@@ -50,8 +50,15 @@ Fast _Microsoft Excel's_ **\*.xlsx** reader.
 // open *.xlsx
 xlsx_workbook_t wb;
 xlsx_open("foo.xlsx", &wb);
+// be free to inspect some wb data
+int number_of_sheets = wb.n_sheets;
 // load sheet
 xlsx_sheet_t *sheet_1 = xlsx_load_sheet(&wb, 1, NULL);
+// be free to inspect some sheet data
+char *sheet_name = sheet_1->name;
+int last_row = sheet_1->last_row; // valued 0 if the sheet is empty
+// as of version 0.2.0 you can retrieve the last column (more info below)
+char *last_column = xlsx_get_last_column(sheet_1); // i.e.: "FB" or "R", etc.
 // read cell
 xlsx_cell_t cell_data_holder;    
 xlsx_read_cell(sheet_1, 4, "B", &cell_data_holder);
@@ -117,6 +124,14 @@ The rest of the public functions will return 0 or NULL if fail, and 1 or a valid
 
 **For full documentation of the API, check [_src/xlsx_drone.h_](https://github.com/damian-m-g/xlsx_drone/blob/master/src/xlsx_drone.h).**
 
+### Getting the last column of certain sheet (since version 0.2.0)
+
+This feature wasn't originally included in the release version since has a _time_ cost to be discovered (this issue gets noted with **big** files). Version 0.2.0 (and forth) provide a solution without killing the essence of the library (speed over funcionality). 
+
+This value won't be discovered when `xlsx_load_sheet()` because you can be working with well known *.xlsx files, -so you already know where things are, what columns matter, and so on- and basically you don't need the information. But sometimes, you'll be working _blindly_ with unknown files, so you may need to know the limits of the sheet: what is the last row, and what is the last column with information.
+
+In the last case, you now have `char* xlsx_get_last_column(xlsx_sheet_t *sheet);`. Which takes an already loaded sheet, and returns a string representing the last column. Could also return NULL, in case of an error or empty sheet (check [_src/xlsx_drone.h_](https://github.com/damian-m-g/xlsx_drone/blob/master/src/xlsx_drone.h) for more info). After this first call, `sheet->last_column` gets populated with the function returned value, so after that first call, you can either keep calling the function, or consult straightforward the sheet member, your choice.
+
 ## Bindings
 
 Using foreign function calls, a [binding to **Ruby**](https://github.com/damian-m-g/xlsx_drone_rb) was made.
@@ -131,8 +146,7 @@ Using foreign function calls, a [binding to **Ruby**](https://github.com/damian-
 
 All ideas about new implementations are thoroughly thought to keep the essence of the library, which is to be fast and simple. Hence, next TODOs could be taken into account or dismissed based on that.
 
-- Consider make xlsx_open() work independently of having the *.xlsx opened (grabbed) or closed. 
-- [Consider provide a function that tells the last column used of certain sheet (implementation difficulty: 8/10).](https://github.com/damian-m-g/xlsx_drone/issues/1)
+- Consider make xlsx_open() work independently of having the *.xlsx opened (grabbed) or closed.
 
 ## Credits & Thanks
 

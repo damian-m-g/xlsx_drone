@@ -367,12 +367,96 @@ void xlsx_unload_sheet(xlsx_sheet_t *sheet) {
   if(sheet->name) {
     free(sheet->name);
     sheet->name = NULL;
+    if(sheet->last_column) {
+      free(sheet->last_column);
+      sheet->last_column = NULL;
+    }
     // if the name isn't allocated, neither the sheet_xml field
     if(sheet->sheet_xml) {
       XMLDoc_free(sheet->sheet_xml);
       free(sheet->sheet_xml);
       sheet->sheet_xml = NULL;
     }
+  }
+}
+
+
+/*
+* summary:
+*   As to actually get the last column with a non-empty value requires some effort (run-time), it is not gathered in
+*   xlsx_load_sheet(). This is because maybe you already know what columns are you interested in, and it could be
+*   superflous to get the last column used.
+*   So after the first time you call this function, sheet->last_column gets value, and then, you can directly ask for
+*   sheet->last_column, or you can keep calling xlsx_get_last_column(), your choice.
+* params:
+*   sheet: A loaded sheet.
+* returns:
+*   A string with the last column value, i.e.: "AF", or "B", etc. Or, will return NULL if:
+*     * an error happened. Check xlsx_errno against xlsx_get_last_column_errno values, that will be 0 if were no error.
+*     * the sheet is empty.
+*/
+char* xlsx_get_last_column(xlsx_sheet_t *sheet) {
+
+  // reset xlsx_errno value
+  xlsx_errno = 0;
+
+  // the sheet must be loaded
+  if(!sheet->sheet_xml) {
+    if(xlsx_print_err_messages)
+      fprintf(stderr, "XLSX_C ERROR: The sheet isn't loaded.\n");
+    xlsx_errno = XLSX_GET_LAST_COLUMN_ERRNO_SHEET_NOT_LOADED;
+    return NULL; // FAIL
+  }
+
+  // it could have been obtained before (or be an empty sheet, in which case its value is NULL)
+  if(sheet->last_column || (sheet->sheetdata->n_children == 0)) {
+    return sheet->last_column;
+  }
+
+  // the sheet at least have some value, so will have an actual string for last_column
+  int row_node_index, cell_node_index;
+  XMLNode *row, *cell;
+  char last_column[5] = {0}, column[5] = {0};
+
+  // iterate over all rows, starting from the first one
+  for(row_node_index = 0; row_node_index < sheet->sheetdata->n_children; ++row_node_index) {
+    row = sheet->sheetdata->children[row_node_index];
+
+    // iterate over all cells of thy row, starting from the last one
+    for(cell_node_index = row->n_children - 1; cell_node_index >= 0; --cell_node_index) {
+      cell = row->children[cell_node_index];
+
+      // does it have a <v> child with value within? If has a child, it has value
+      if(cell->n_children > 0) {
+        // first attribute should be "r"
+        withdraw_alphabetic_chars(cell->attributes[0].value, column);
+        // compare this column value with the "last_column"
+        if(strlen(column) == strlen(last_column)) {
+          // only use strcmp when both strings have the same length, otherwise doesn't work for the purpose
+          if(strcmp(column, last_column) > 0) {
+            strcpy(last_column, column);
+          }
+        } else if(strlen(column) > strlen(last_column)) {
+          // *column* has a bigger column value
+          strcpy(last_column, column);
+        }
+        // don't go any further, above you'll find lesser column values
+        break;
+      }
+    }
+  }
+
+  // in the case the sheet is empty but has style inserted, last_column won't have a valid string
+  if(last_column[0] != '\0') {
+    sheet->last_column = (char*)malloc(sizeof(char) * 5);
+    if(!sheet->last_column) {
+      xlsx_errno = XLSX_GET_LAST_COLUMN_ERRNO_OUT_OF_MEMORY;
+      return NULL; // FAIL
+    }
+    strcpy(sheet->last_column, last_column);
+    return sheet->last_column;
+  } else {
+    return NULL;
   }
 }
 
@@ -476,7 +560,6 @@ int xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_c
 */
 int xlsx_close(xlsx_workbook_t *deployed_xlsx)
 {
-  // free memory
   if(deployed_xlsx->shared_strings_xml) {
     XMLDoc_free(deployed_xlsx->shared_strings_xml);
     free(deployed_xlsx->shared_strings_xml);
@@ -544,6 +627,7 @@ static void init_xlsx_sheet_t_struct(xlsx_sheet_t *sheet, xlsx_workbook_t *deplo
   sheet->sheet_xml = NULL; // won't be loaded until xlsx_load_sheet()
   sheet->sheetdata = NULL; // won't be loaded until xlsx_load_sheet()
   sheet->last_row = -1; // won't be known until xlsx_load_sheet()
+  sheet->last_column = NULL; // won't be known until xlsx_get_last_column() is called
   sheet->last_row_looked.row_n = -1; // no row was seeked yet
   sheet->last_row_looked.sheetdata_child_i = -1; // no row was seeked yet
 }
@@ -995,4 +1079,29 @@ static int delete_folder(const char *folder_path) {
     return 0; // FAIL
   else
     return 1; // OK
+}
+
+
+/*
+* summary:
+*   After passing a string, it's parsed from the beginning stopping when a non-alphabetic char is found. A substring
+*   till that point is returned. I.e.: You pass "ABC451", "ABC" is returned. It is known that the string passed will
+*   always start at least with one alphabetic char, and that the alphabetic chars won't be more than 4 chars.
+* params:
+*   s_input: String input.
+*   s_output: String output. Zero initialized.
+*/
+static void withdraw_alphabetic_chars(const char *s_input, char s_output[5]) {
+  int char_index = 0;
+  // as maximum will have 4 chars
+  while(1) {
+    if(s_input[char_index] >= 65 && s_input[char_index] <= 90) {
+      s_output[char_index] = s_input[char_index];
+      ++char_index;
+    } else {
+      // needed so it behaves as a string
+      s_output[char_index] = '\0';
+      break;
+    }
+  }
 }

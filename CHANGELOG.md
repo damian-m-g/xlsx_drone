@@ -1,12 +1,23 @@
 # Changelog
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), featuring Added, Changed, Deprecated,
+Removed, Fixed, Security, and others; and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 ### TODO
 - Provide tests for cells with formulas, how do they appear in the XMLs?
+
+## [0.2.0] - 2020-01-16
+### Added
+- New function: xlsx_get_last_column().
+- New xlsx_sheet_t member: last_column, that won't have value (NULL), unless xlsx_get_last_column() gets called at least 
+once.
+- New private (static) function, helper of xlsx_get_last_column(): withdraw_alphabetic_chars().
+- Several new test assertions for the new functionality.
+
+### Changed
+- README.md
 
 ## [0.1.9] - 2020-01-10
 ### Added

@@ -408,6 +408,44 @@ void test_xlsx_unload_sheet(void) {
 }
 
 
+void test_xlsx_get_last_column(void) {
+  xlsx_workbook_t wb;
+  xlsx_open("test\\helpers\\empty_sample.xlsx", &wb); // ATTENTION: Must be closed
+
+  // before loading a sheet, we expect an error
+  TEST_ASSERT_NULL(xlsx_get_last_column(wb.sheets[0]));
+  TEST_ASSERT_EQUAL_INT(-31, xlsx_get_xlsx_errno());
+
+  // if the sheet is empty, should return NULL
+  xlsx_sheet_t *sheet;
+  sheet = xlsx_load_sheet(&wb, 1, NULL);
+  TEST_ASSERT_NULL(xlsx_get_last_column(sheet));
+  TEST_ASSERT_EQUAL_INT(0, xlsx_get_xlsx_errno());
+
+  // this sheet is also empty, but has styles defined in several cells
+  sheet = xlsx_load_sheet(&wb, 2, NULL);
+  TEST_ASSERT_NULL(xlsx_get_last_column(sheet));
+  TEST_ASSERT_EQUAL_INT(0, xlsx_get_xlsx_errno());
+
+  xlsx_close(&wb);
+
+  xlsx_open("test\\helpers\\sample.xlsx", &wb); // ATTENTION: Must be closed
+  // if the sheet is empty, should return NULL
+  sheet = xlsx_load_sheet(&wb, 1, NULL);
+  TEST_ASSERT_EQUAL_STRING("L", xlsx_get_last_column(sheet));
+  // if asked again, should return same result
+  TEST_ASSERT_EQUAL_STRING("L", xlsx_get_last_column(sheet));
+  // after asking once, you can directly retrieve the value
+  TEST_ASSERT_EQUAL_STRING("L", sheet->last_column);
+
+  // this sheet has its las value on column "B" but has styles defined at the right, should return "B"
+  sheet = xlsx_load_sheet(&wb, 2, NULL);
+  TEST_ASSERT_EQUAL_STRING("B", xlsx_get_last_column(sheet));
+
+  xlsx_close(&wb);
+}
+
+
 void test_xlsx_read_cell(void) {
   // setup
   xlsx_workbook_t wb;
@@ -1192,6 +1230,7 @@ int main(void) {
   RUN_TEST(test_xlsx_open);
   RUN_TEST(test_xlsx_load_sheet);
   RUN_TEST(test_xlsx_unload_sheet);
+  RUN_TEST(test_xlsx_get_last_column);
   RUN_TEST(test_xlsx_read_cell);
   RUN_TEST(test_xlsx_close);
   return UNITY_END();
