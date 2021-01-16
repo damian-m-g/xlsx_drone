@@ -19,7 +19,7 @@ once.
 ### Changed
 - README.md
 
-## [0.1.9] - 2020-01-10
+## [0.1.9] - 2021-01-10
 ### Added
 - Documentation on the header.
 - Several assertions on test_xlsx_load_sheet().
@@ -32,15 +32,15 @@ once.
 - xlsx_read_cell() return. Now returns 1 or 0 depending on success or failure.
 - Some code style towards simpleness.
 
-## [0.1.8-alpha] - 2020-01-04
+## [0.1.8-alpha] - 2021-01-04
 ### Fixed
 - When a cell has no value, but style set, it was triggering problems. Code has been written to take this into account.
 
-## [0.1.7-alpha] - 2020-01-04
+## [0.1.7-alpha] - 2021-01-04
 ### Added
 - Unit tests to test empty cells.
 
-## [0.1.6-alpha] - 2020-01-04
+## [0.1.6-alpha] - 2021-01-04
 ### Changed
 - Error reporting system. As suggested by the web, I'm not using anymore errno error system to give info about an error
 since that system is supposed to be used only by the OS. Now I'm using a custom one setting xlsx_errno static global
