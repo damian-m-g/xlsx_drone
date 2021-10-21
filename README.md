@@ -106,6 +106,11 @@ Note that:
 * _XLSX_DATE_ category is represented as an int that stars with 1 for the first day of 1900 and raises until the last day of 9999. Values that fall out of the range are represented as text (string) although they will be pointed as _XLSX_DATE_ if the cell has that category manually fixed.
 * _XLSX_DATE_TIME_ category is a combination of XLSX_TIME and XLSX_DATE.
 
+```c
+// when you're done reading the XLSX, close the workbook to properly free resources:
+xlsx_close(&wb);
+```
+
 ### Extended
 
 This section shows brief descriptions of extra features of the library.

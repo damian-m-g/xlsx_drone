@@ -5,8 +5,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 Removed, Fixed, Security, and others; and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### TODO
-- Provide tests for cells with formulas, how do they appear in the XMLs?
+
+## [0.2.1] - 2021-10-21
+### Fixed
+- Issue #2 "tmpnam warning".
+- Issue #3 "missing ENVIRONMENT_VARIABLE_TEMP". The line of code that uses this macro was working only on Windows, now
+it should work in any other OS too.
+
+### Changed
+- Improved README.md.
+- zip library updated from 0.1.21 to 0.1.32.
 
 ## [0.2.0] - 2020-01-16
 ### Added

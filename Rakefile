@@ -63,8 +63,8 @@ def build_unit_tests(_64: false, coverage: false)
   command = []
   if(_64)
     File.delete('temp/x64') rescue nil
-    # locally using mingw compiler that comes packed with RubyInstaller 2.7 (version 10.2)
-    command << gcc = 'C:/Ruby27-x64/msys64/mingw64/bin/gcc.exe'
+    # locally using mingw compiler that comes packed with RubyInstaller 3.0 (version 10.2)
+    command << gcc = 'C:/Ruby30-x64/msys64/mingw64/bin/gcc.exe'
   else
     File.delete('temp/x86') rescue nil
     # locally using mingw compiler downloaded from official website (version 9.2)

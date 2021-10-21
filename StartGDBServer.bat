@@ -1,4 +1,4 @@
-Rem comiple unit_tests.exe
+Rem compile unit_tests.exe
 cmd /c rake c
 Rem run the gdbserver
-start gdbserver localhost:2159 test/unit_tests.exe
+start gdbserver localhost:2159 temp/unit_tests.exe

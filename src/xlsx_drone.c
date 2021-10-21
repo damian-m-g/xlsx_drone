@@ -49,8 +49,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 
   // build the temporary path where the excel will be deployed
   const char *temp_path = getenv(ENVIRONMENT_VARIABLE_TEMP);
-  // tmpname() returns a name with a period at the end, this is unaccepted by Windows standard for folder/file names
-  const char *temp_folder = tmpnam(NULL);
+  // tmpname() returns a name with a period at the end, this is unliked by Windows standard for folder/file names;
+  // non-Windows users use mkdtemp() procedure
+  const char *temp_folder = WINDOWS ? tmpnam(NULL) : "/XXXXXX";
   int deployed_xlsx_path_len = strlen(temp_path) + strlen(temp_folder);
   char *deployed_xlsx_path = malloc(sizeof(char) * (deployed_xlsx_path_len + 1));
   if(!deployed_xlsx_path) {
@@ -61,6 +62,13 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   strcat(deployed_xlsx_path, temp_folder);
   // make the char array a string
   deployed_xlsx_path[deployed_xlsx_path_len] = '\0';
+  // non-Windows users are suggested to use mkdtemp()
+  if(!WINDOWS) {
+    if(!mkdtemp(deployed_xlsx_path)) {
+      xlsx_errno = XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE;
+      return 0; // FAIL
+    }
+  }
 
   // deploy there
   if(zip_extract(src, deployed_xlsx_path, NULL, NULL) != 0) {

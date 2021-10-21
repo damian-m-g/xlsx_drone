@@ -1,7 +1,7 @@
 /*
 * xlsx_drone - Copyright (c) 2021, Damian M. Gonzalez.
 * Released under MIT license, please refer to LICENSE file for details.
-* VERSION: 0.2.0
+* VERSION: 0.2.1
 */
 #ifndef PORCUPINE_LIBRARY_H
 #define PORCUPINE_LIBRARY_H
@@ -15,25 +15,45 @@
 #include <sys/stat.h>
 
 // external libraries
-#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.21 (2020/12)
+#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.32 (2021/07)
 #include "../ext/sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 4.5.1 (2020/08)
 #include "../ext/sxmlsearch.h"
 
 
 // constants
+// basic
 #ifndef true
   #define true 1
 #endif
 #ifndef false
   #define false 0
 #endif
+
+// error output managment
 #ifdef __MINGW32__
   #include <afxres.h>
   #define XLSX_SET_ERRNO(x) SetLastError(x)
 #else
   #define XLSX_SET_ERRNO(x) errno=(x)
 #endif
-#define ENVIRONMENT_VARIABLE_TEMP "TEMP" // target is Windows OS > Win 3.x for now
+
+// OS awareness
+#if defined(_WIN32) || defined(_WIN64)
+  #define WINDOWS 1 // Windows OS > Win 3.x
+#else
+  #define WINDOWS 0 // Other OS
+#endif
+
+// temp location managment
+#if defined(_WIN32) || defined(_WIN64)
+  #define ENVIRONMENT_VARIABLE_TEMP "TEMP" // Windows OS > Win 3.x
+#elif defined(__unix__) || defined(__linux__) || defined(__APPLE__) || defined(__MACH__)
+  #define ENVIRONMENT_VARIABLE_TEMP "TMPDIR" // Ubuntu/Linux/OSX
+#else
+  #define ENVIRONMENT_VARIABLE_TEMP "TMPDIR" // Other OS probably uses this symbol
+#endif
+
+// other
 #define REL_PATH_TO_STYLES "\\xl\\styles.xml"
 #define REL_PATH_TO_SHARED_STRINGS "\\xl\\sharedStrings.xml"
 #define REL_PATH_TO_WORKBOOK "\\xl\\workbook.xml"
