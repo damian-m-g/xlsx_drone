@@ -6,6 +6,10 @@ Removed, Fixed, Security, and others; and this project adheres to [Semantic Vers
 
 ## [Unreleased]
 
+## [0.2.2] - 2021-10-21
+### Fixed
+- Added include for errno.h for non-Windows users.
+
 ## [0.2.1] - 2021-10-21
 ### Fixed
 - Issue #2 "tmpnam warning".

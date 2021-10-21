@@ -107,7 +107,7 @@ Note that:
 * _XLSX_DATE_TIME_ category is a combination of XLSX_TIME and XLSX_DATE.
 
 ```c
-// when you're done reading the XLSX, close the workbook to properly free resources:
+// when you're done reading the XLSX, close the workbook to properly free resources
 xlsx_close(&wb);
 ```
 

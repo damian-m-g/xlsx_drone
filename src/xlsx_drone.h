@@ -1,7 +1,7 @@
 /*
 * xlsx_drone - Copyright (c) 2021, Damian M. Gonzalez.
 * Released under MIT license, please refer to LICENSE file for details.
-* VERSION: 0.2.1
+* VERSION: 0.2.2
 */
 #ifndef PORCUPINE_LIBRARY_H
 #define PORCUPINE_LIBRARY_H
@@ -34,6 +34,7 @@
   #include <afxres.h>
   #define XLSX_SET_ERRNO(x) SetLastError(x)
 #else
+  #include <errno.h>
   #define XLSX_SET_ERRNO(x) errno=(x)
 #endif
 
