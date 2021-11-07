@@ -40,8 +40,6 @@ Fast _Microsoft Excel's_ **\*.xlsx** reader.
 
 ..., you might want to modify that according to your needs.
 
-**NOTE**: You'll also find several dynamic library releases inside the _share_ folder for the current version that could be of usage.
-
 ## Usage
 
 ### Essential
