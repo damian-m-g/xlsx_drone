@@ -6,6 +6,11 @@ Removed, Fixed, Security, and others; and this project adheres to [Semantic Vers
 
 ## [Unreleased]
 
+## [0.2.3] - 2021-11-07
+### Fixed
+- Added a fallback for when usual environment variable that points to temp directory doesn't exist for the current OS.
+According to POSIX/FHS it should be "/tmp" then. Hardcoding that.
+
 ## [0.2.2] - 2021-10-21
 ### Fixed
 - Added include for errno.h for non-Windows users.

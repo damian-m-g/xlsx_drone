@@ -1,7 +1,7 @@
 /*
 * xlsx_drone - Copyright (c) 2021, Damian M. Gonzalez.
 * Released under MIT license, please refer to LICENSE file for details.
-* VERSION: 0.2.2
+* VERSION: 0.2.3
 */
 #ifndef PORCUPINE_LIBRARY_H
 #define PORCUPINE_LIBRARY_H

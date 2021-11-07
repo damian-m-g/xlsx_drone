@@ -47,8 +47,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 
   init_xlsx_workbook_t_struct(xlsx);
 
-  // build the temporary path where the excel will be deployed
-  const char *temp_path = getenv(ENVIRONMENT_VARIABLE_TEMP);
+  // build the temporary path where the excel will be deployed (fallback to /tmp if env var not defined)
+  const char *temp_path = getenv(ENVIRONMENT_VARIABLE_TEMP) ? getenv(ENVIRONMENT_VARIABLE_TEMP) : "/tmp";
   // tmpname() returns a name with a period at the end, this is unliked by Windows standard for folder/file names;
   // non-Windows users use mkdtemp() procedure
   const char *temp_folder = WINDOWS ? tmpnam(NULL) : "/XXXXXX";
