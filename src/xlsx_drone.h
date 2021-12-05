@@ -1,10 +1,10 @@
 /*
 * xlsx_drone - Copyright (c) 2021, Damian M. Gonzalez.
 * Released under MIT license, please refer to LICENSE file for details.
-* VERSION: 0.2.3
+* VERSION: 0.2.4
 */
-#ifndef PORCUPINE_LIBRARY_H
-#define PORCUPINE_LIBRARY_H
+#ifndef XLSX_DRONE_LIBRARY_H
+#define XLSX_DRONE_LIBRARY_H
 
 // includes
 // core libraries
@@ -55,10 +55,17 @@
 #endif
 
 // other
-#define REL_PATH_TO_STYLES "\\xl\\styles.xml"
-#define REL_PATH_TO_SHARED_STRINGS "\\xl\\sharedStrings.xml"
-#define REL_PATH_TO_WORKBOOK "\\xl\\workbook.xml"
-#define REL_PATH_TO_WORKSHEETS "\\xl\\worksheets\\"
+#if defined(_WIN32) || defined(_WIN64)
+  #define REL_PATH_TO_STYLES "\\xl\\styles.xml"
+  #define REL_PATH_TO_SHARED_STRINGS "\\xl\\sharedStrings.xml"
+  #define REL_PATH_TO_WORKBOOK "\\xl\\workbook.xml"
+  #define REL_PATH_TO_WORKSHEETS "\\xl\\worksheets\\"
+#else
+  #define REL_PATH_TO_STYLES "/xl/styles.xml"
+  #define REL_PATH_TO_SHARED_STRINGS "/xl/sharedStrings.xml"
+  #define REL_PATH_TO_WORKBOOK "/xl/workbook.xml"
+  #define REL_PATH_TO_WORKSHEETS "/xl/worksheets/"
+#endif
 #define STYLES_CELLXFS_TAG "cellXfs"
 #define STYLES_NUMFMT_TAG "numFmt"
 #define AMOUNT_OF_PREDEFINED_STYLE_TYPES 50

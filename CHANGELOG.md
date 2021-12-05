@@ -6,6 +6,10 @@ Removed, Fixed, Security, and others; and this project adheres to [Semantic Vers
 
 ## [Unreleased]
 
+## [0.2.4] - 2021-12-05
+### Fixed
+- Hardcoded relative paths to XLSX internals were working only on Windows. Fixed for other OS.
+
 ## [0.2.3] - 2021-11-07
 ### Fixed
 - Added a fallback for when usual environment variable that points to temp directory doesn't exist for the current OS.
