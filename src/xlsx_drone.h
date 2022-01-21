@@ -10,12 +10,15 @@
 // core libraries
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
-#include <unistd.h>
 #include <sys/stat.h>
 
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+
 // external libraries
-#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.32 (2021/07)
 #include "../ext/sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 4.5.1 (2020/08)
 #include "../ext/sxmlsearch.h"
 
@@ -210,7 +213,7 @@ static xlsx_cell_category xlsx_predefined_style_types[AMOUNT_OF_PREDEFINED_STYLE
   XLSX_NUMBER, // 48
   XLSX_TEXT // 49
 };
-static char *xlsx_predefined_styles_format_code[AMOUNT_OF_PREDEFINED_STYLE_TYPES] = {
+static const char *xlsx_predefined_styles_format_code[AMOUNT_OF_PREDEFINED_STYLE_TYPES] = {
     NULL, // 0
     "0", // 1
     "0.00", // 2
@@ -407,5 +410,10 @@ static void interpret_cell_node(XMLNode *cell, xlsx_sheet_t *sheet, xlsx_cell_t 
 static int delete_folder(const char *folder_path);
 static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *cell_data_holder);
 static void withdraw_alphabetic_chars(const char *s_input, char s_output[5]);
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
