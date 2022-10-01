@@ -111,6 +111,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: \"%s\" can't be parsed or doesn't exist.\n", REL_PATH_TO_STYLES);
     xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+    XMLDoc_free(&styles_xml);
     return 0; // FAIL
   }
 
@@ -124,6 +125,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     xlsx_close(xlsx);
     fprintf(stderr, "XLSX_C ERROR: \"%s\" node can't be found on \"%s\".\n", STYLES_CELLXFS_TAG, REL_PATH_TO_STYLES);
     xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+    XMLSearch_free(&search_engine, false);
+    XMLDoc_free(&styles_xml);
     return 0; // FAIL
   }
 
@@ -132,6 +135,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   if(!(xlsx->styles = calloc(cell_xfs_node->n_children, sizeof(xlsx_style_t *)))) {
     xlsx_close(xlsx);
     xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+    XMLSearch_free(&search_engine, false);
+    XMLDoc_free(&styles_xml);
     return 0; // FAIL
   }
 
@@ -145,6 +150,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     if(!(xlsx->styles[xf_index] = malloc(sizeof(xlsx_style_t)))) {
       xlsx_close(xlsx);
       xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+      XMLSearch_free(&search_engine, false);
+      XMLDoc_free(&styles_xml);
       return 0; // FAIL
     }
     // zero initialize all its fields that need memory allocation
@@ -164,6 +171,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" children over \"%s\".\n",
               STYLES_NUMFMTID_ATTR_NAME, STYLES_CELLXFS_TAG, REL_PATH_TO_STYLES);
       xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+      XMLSearch_free(&search_engine, false);
+      XMLDoc_free(&styles_xml);
       return 0; // FAIL
     }
     // once *xf_node_numfmtid_value* was found, see if it points to the predefined ones,
@@ -177,6 +186,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       xlsx->styles[xf_index]->format_code = xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
     } else {
       // custom style
+      XMLSearch_free(&search_engine, false);
       XMLSearch_init(&search_engine);
       XMLSearch_search_set_tag(&search_engine, STYLES_NUMFMT_TAG);
       XMLSearch_search_add_attribute(&search_engine, STYLES_NUMFMTID_ATTR_NAME, xf_node_numfmtid_value, true);
@@ -186,6 +196,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
           fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" with \"%s\" equal to \"%s\" in \"%s\".\n",
           STYLES_NUMFMT_TAG, STYLES_NUMFMTID_ATTR_NAME, xf_node_numfmtid_value, REL_PATH_TO_STYLES);
         xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+        XMLSearch_free(&search_engine, false);
+        XMLDoc_free(&styles_xml);
         return 0; // FAIL
       }
       for(attr_index = (num_fmt_node->n_attributes - 1); attr_index >= 0; --attr_index) {
@@ -194,6 +206,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
           if(!(xlsx->styles[xf_index]->format_code = malloc(sizeof(char) * (format_code_length + 1)))) {
             xlsx_close(xlsx);
             xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+            XMLSearch_free(&search_engine, false);
+            XMLDoc_free(&styles_xml);
             return 0; // FAIL
           }
           strcpy(xlsx->styles[xf_index]->format_code, num_fmt_node->attributes[attr_index].value);
@@ -209,8 +223,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
           fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" elements over \"%s\".\n",
           STYLES_FORMATCODE_ATTR_NAME, STYLES_NUMFMT_TAG, REL_PATH_TO_STYLES);
         xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+        XMLSearch_free(&search_engine, false);
+        XMLDoc_free(&styles_xml);
         return 0; // FAIL
       }
+      XMLSearch_free(&search_engine, false);
     }
   }
 
@@ -225,9 +242,12 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: \"%s\" can't be parsed or doesn't exist.\n", REL_PATH_TO_WORKBOOK);
     xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+    XMLDoc_free(&workbook_xml);
+    XMLDoc_free(&styles_xml);
     return 0; // FAIL
   }
   // look for sheet elements
+  XMLSearch_free(&search_engine, false);
   XMLSearch_init(&search_engine);
   XMLSearch_search_set_tag(&search_engine, WORKBOOK_SHEETS_TAG);
   // from the root tag
@@ -238,6 +258,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" element inside \"%s\".\n",
       WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
     xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+    XMLSearch_free(&search_engine, false);
+    XMLDoc_free(&workbook_xml);
+    XMLDoc_free(&styles_xml);
     return 0; // FAIL
   }
 
@@ -245,6 +268,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   if(!(xlsx->sheets = malloc(sheets_node->n_children * sizeof(xlsx_sheet_t *)))) {
     xlsx_close(xlsx);
     xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+    XMLSearch_free(&search_engine, false);
+    XMLDoc_free(&workbook_xml);
+    XMLDoc_free(&styles_xml);
     return 0; // FAIL
   }
 
@@ -253,6 +279,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     if(!(xlsx->sheets[sheet_index] = malloc(sizeof(xlsx_sheet_t)))) {
       xlsx_close(xlsx);
       xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+      XMLSearch_free(&search_engine, false);
+      XMLDoc_free(&workbook_xml);
+      XMLDoc_free(&styles_xml);
       return 0; // FAIL
     }
     // initialize all members of this *xlsx_sheet_t* struct
@@ -264,6 +293,8 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
           malloc(strlen(sheets_node->children[sheet_index]->attributes[attr_index].value) + 1))) {
             xlsx_close(xlsx);
             xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+            XMLSearch_free(&search_engine, false);
+            XMLDoc_free(&workbook_xml);
             return 0; // FAIL
           }
         strcpy(xlsx->sheets[sheet_index]->name, sheets_node->children[sheet_index]->attributes[attr_index].value);
@@ -276,10 +307,16 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" children over \"%s\".\n",
               WORKBOOK_NAME_ATTR_NAME, WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
       xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
+      XMLSearch_free(&search_engine, false);
+      XMLDoc_free(&workbook_xml);
+      XMLDoc_free(&styles_xml);
       return 0; // FAIL
     }
   }
 
+  XMLSearch_free(&search_engine, false);
+  XMLDoc_free(&workbook_xml);
+  XMLDoc_free(&styles_xml);
   return 1;
 }
 
@@ -840,6 +877,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
       fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" element inside #\"%d\" sheet.\n",
               SHEET_SHEETDATA_TAG, sheet_number);
     xlsx_errno = XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR;
+    XMLSearch_free(&search_engine, false);
     return 0; // FAIL
   }
 
@@ -850,6 +888,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
     for(row_node_index = sheet_data_node->n_children - 1; row_node_index >= 0; --row_node_index) {
       row = sheet_data_node->children[row_node_index];
       // check out if it has content (seek inside a <v> with content)
+      XMLSearch_free(&search_engine, false);
       XMLSearch_init(&search_engine);
       XMLSearch_search_set_tag(&search_engine, SHEET_VALUE_TAG);
       XMLSearch_search_set_text(&search_engine, "*?*");
@@ -868,6 +907,7 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
             fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" attribute, inside node \"%s\", inside #\"%d\" sheet.\n",
                     SHEET_ROW_ATTR_NAME, SHEET_ROW_TAG, sheet_number);
           xlsx_errno = XLSX_LOAD_SHEET_ERRNO_XML_PARSING_ERROR;
+          XMLSearch_free(&search_engine, false);
           return 0; // FAIL
         }
         break;
@@ -884,6 +924,8 @@ static int parse_sheet(int sheet_number, xlsx_sheet_t * sheet) {
 
   sheet->sheet_xml = sheet_xml;
   sheet->sheetdata = sheet_data_node;
+
+  XMLSearch_free(&search_engine, false);
 
   return 1;
 }
