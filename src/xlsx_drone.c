@@ -4,6 +4,25 @@
 
 
 // functions
+
+// include needed for delete_folder
+// for Visual Studio, windows.h must be included before zip.h
+#if defined(_MSC_VER)
+#include <windows.h>
+#include <malloc.h>
+#else
+#include <dirent.h>
+#include <unistd.h>
+#endif
+
+// code from https://github.com/michael-hartmann/parsefloat
+#include <ctype.h>
+#include <math.h>
+#include <stdlib.h>
+
+#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.32 (2021/07)
+
+
 /*
 * summary:
 *   Flags if the error messages must or must not be printed. Perhaps the user of the library wants to manage errors
@@ -49,26 +68,39 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 
   // build the temporary path where the excel will be deployed (fallback to /tmp if env var not defined)
   const char *temp_path = getenv(ENVIRONMENT_VARIABLE_TEMP) ? getenv(ENVIRONMENT_VARIABLE_TEMP) : "/tmp";
+#if !(WINDOWS)
+  if (temp_path[0]=='\0')
+      temp_path="/tmp";
+#endif
   // tmpname() returns a name with a period at the end, this is unliked by Windows standard for folder/file names;
   // non-Windows users use mkdtemp() procedure
   const char *temp_folder = WINDOWS ? tmpnam(NULL) : "/XXXXXX";
-  int deployed_xlsx_path_len = strlen(temp_path) + strlen(temp_folder);
+  int deployed_xlsx_path_len = (int)strlen(temp_path) + (int)strlen(temp_folder);
   char *deployed_xlsx_path = malloc(sizeof(char) * (deployed_xlsx_path_len + 1));
   if(!deployed_xlsx_path) {
     xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+    fprintf(stderr, "XLSX_C ERROR: memory error.\n");
     return 0; // FAIL
   }
+#if (WINDOWS)
+  deployed_xlsx_path[0]='\0';
+#else
   strcpy(deployed_xlsx_path, temp_path);
+#endif
+
   strcat(deployed_xlsx_path, temp_folder);
   // make the char array a string
   deployed_xlsx_path[deployed_xlsx_path_len] = '\0';
   // non-Windows users are suggested to use mkdtemp()
+#if !defined(_MSC_VER)
   if(!WINDOWS) {
     if(!mkdtemp(deployed_xlsx_path)) {
       xlsx_errno = XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE;
+      fprintf(stderr, "XLSX_C ERROR: XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE to %s\n", deployed_xlsx_path);
       return 0; // FAIL
     }
   }
+#endif
 
   // deploy there
   if(zip_extract(src, deployed_xlsx_path, NULL, NULL) != 0) {
@@ -89,7 +121,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     return 0; // FAIL
   }
   XMLDoc_init(xlsx->shared_strings_xml);
+#if defined(_MSC_VER)
+  char *path_to_shared_strings_xml=(char*)_alloca(strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_SHARED_STRINGS) + 1);
+#else
   char path_to_shared_strings_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_SHARED_STRINGS) + 1];
+#endif
   strcpy(path_to_shared_strings_xml, deployed_xlsx_path);
   strcat(path_to_shared_strings_xml, REL_PATH_TO_SHARED_STRINGS);
   // next function returns false if something went wrong in the parsing OR if the file doesn't exist, which may happen
@@ -103,7 +139,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   // load and parse a bit of styles.xml
   XMLDoc styles_xml;
   XMLDoc_init(&styles_xml);
+#if defined(_MSC_VER)
+  char *path_to_styles_xml=(char*)_alloca(strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_STYLES) + 1);
+#else
   char path_to_styles_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_STYLES) + 1];
+#endif
   strcpy(path_to_styles_xml, deployed_xlsx_path);
   strcat(path_to_styles_xml, REL_PATH_TO_STYLES);
   if(!(XMLDoc_parse_file_DOM(path_to_styles_xml, &styles_xml))) {
@@ -183,7 +223,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       // predefined style
       xlsx->styles[xf_index]->related_category = xlsx_predefined_style_types[xf_node_numfmtid_value_as_int];
       // note that next value could be NULL
-      xlsx->styles[xf_index]->format_code = xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
+      xlsx->styles[xf_index]->format_code = (char*)xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
     } else {
       // custom style
       XMLSearch_free(&search_engine, false);
@@ -202,7 +242,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       }
       for(attr_index = (num_fmt_node->n_attributes - 1); attr_index >= 0; --attr_index) {
         if(strcmp(num_fmt_node->attributes[attr_index].name, STYLES_FORMATCODE_ATTR_NAME) == 0) {
-          format_code_length = strlen(num_fmt_node->attributes[attr_index].value);
+          format_code_length = (int)strlen(num_fmt_node->attributes[attr_index].value);
           if(!(xlsx->styles[xf_index]->format_code = malloc(sizeof(char) * (format_code_length + 1)))) {
             xlsx_close(xlsx);
             xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
@@ -234,7 +274,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   // look for all sheets on the workbook and partially initialize the sheets members
   XMLDoc workbook_xml;
   XMLDoc_init(&workbook_xml);
+#if defined(_MSC_VER)
+  char *path_to_workbook_xml=(char*)_alloca(strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_WORKBOOK) + 1);
+#else
   char path_to_workbook_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_WORKBOOK) + 1];
+#endif
   strcpy(path_to_workbook_xml, deployed_xlsx_path);
   strcat(path_to_workbook_xml, REL_PATH_TO_WORKBOOK);
   if(!(XMLDoc_parse_file_DOM(path_to_workbook_xml, &workbook_xml))) {
@@ -563,7 +607,7 @@ int xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_c
       interpret_cell_node(cell_node, sheet, cell_data_holder);
     }
 
-  } else if(row > sheet->last_row_looked.row_n) {
+  } else if((int)row > sheet->last_row_looked.row_n) {
 
     // probably the next row will contain what you're looking fore
     XMLNode * row_node = find_row_node(sheet, row, (sheet->last_row_looked.sheetdata_child_i + 1));
@@ -956,7 +1000,7 @@ static XMLNode * find_row_node(xlsx_sheet_t *sheet, unsigned row, int start_from
       sheet->last_row_looked.row_n = (int)row;
       sheet->last_row_looked.sheetdata_child_i = start_from_child;
       return(row_node);
-    } else if(row_inspected > row) {
+    } else if(row_inspected > (int)row) {
       return NULL;
     }
   }
@@ -1092,6 +1136,71 @@ static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *
 * notes:
 *   - remove() and rmdir() deals with both path separators.
 */
+#if defined(_MSC_VER)
+#include <fileapi.h>
+
+
+static BOOL IsDots(const char* str) {
+	if (strcmp(str, (".")) && strcmp(str, (".."))) return FALSE;
+	return TRUE;
+}
+
+static int delete_folder(const char *sPath) {
+	HANDLE hFind;  // file handle
+	WIN32_FIND_DATAA FindFileData;
+
+	TCHAR DirPath[MAX_PATH];
+	TCHAR FileName[MAX_PATH];
+
+	strcpy(DirPath, sPath);
+	strcat(DirPath, ("\\*"));    // searching all files
+	strcpy(FileName, sPath);
+	strcat(FileName, ("\\"));
+
+	hFind = FindFirstFileA(DirPath, &FindFileData); // find the first file
+	if (hFind == INVALID_HANDLE_VALUE) return FALSE;
+	strcpy(DirPath, FileName);
+
+	BOOL bSearch = TRUE;
+	while (bSearch) { // until we finds an entry
+		if (FindNextFile(hFind, &FindFileData)) {
+			if (IsDots(FindFileData.cFileName)) continue;
+			strcat(FileName, FindFileData.cFileName);
+			if ((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+
+				// we have found a directory, recurse
+				if (!delete_folder(FileName)) {
+					FindClose(hFind);
+					return 0; // directory couldn't be deleted
+				}
+				RemoveDirectory(FileName); // remove the empty directory
+                strcpy(FileName, DirPath);
+			}
+			else {
+				if (!DeleteFile(FileName)) {  // delete the file
+					FindClose(hFind);
+					return 0;
+				}
+				strcpy(FileName, DirPath);
+			}
+		}
+		else {
+			if (GetLastError() == ERROR_NO_MORE_FILES) // no more files there
+				bSearch = FALSE;
+			else {
+				// some error occured, close the handle and return FALSE
+				FindClose(hFind);
+				return 0;
+			}
+
+		}
+
+	}
+	FindClose(hFind);  // closing file handle
+
+	return RemoveDirectory(sPath); // remove the empty directory
+}
+#else
 static int delete_folder(const char *folder_path) {
 
   DIR *dir = opendir(folder_path);
@@ -1106,7 +1215,11 @@ static int delete_folder(const char *folder_path) {
   while((entry = readdir(dir))) {
     f_basename = entry->d_name;
     strcpy(f_fullname, folder_path);
+#if WINDOWS
     strcat(f_fullname, "\\");
+#else
+    strcat(f_fullname, "/");
+#endif
     strcat(f_fullname, f_basename);
 
     stat(f_fullname, &entry_statistics); // can set errno
@@ -1130,6 +1243,7 @@ static int delete_folder(const char *folder_path) {
   else
     return 1; // OK
 }
+#endif
 
 
 /*
