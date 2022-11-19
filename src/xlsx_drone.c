@@ -27,147 +27,6 @@ int xlsx_get_xlsx_errno(void) {
 }
 
 /*
-* summary:
-*   Convert a string to double, always using '.' as decimal separator
-*   like strtod, without using locale configuration
-* params:
-*   str: string with double number
-*   success : receive 1 if conversion is sucessfull
-* return:
-*   the converted double value
-*/
-static double strtodouble(const char *str, int *success)
-{
-  double intpart = 0, fracpart = 0, exponent = 0;
-  int sign = +1, len = 0, conversion = 0;
-
-  // skip whitespace
-  while(isspace(*str))
-    str++;
-
-  // check for sign (optional; either + or -)
-  if(*str == '-')
-  {
-    sign = -1;
-    str++;
-  }
-  else if(*str == '+')
-    str++;
-
-  // check for nan and inf
-  if(tolower(str[0]) == 'n' && tolower(str[1]) == 'a' && tolower(str[2]) == 'n')
-  {
-    if(success != NULL)
-      *success = 1;
-    return NAN;
-  }
-  if(tolower(str[0]) == 'i' && tolower(str[1]) == 'n' && tolower(str[2]) == 'f')
-  {
-    if(success != NULL)
-      *success = 1;
-    return sign*INFINITY;
-  }
-
-  // find number of digits before decimal point
-  {
-    const char *p = str;
-    len = 0;
-    while(isdigit(*p))
-    {
-      p++;
-      len++;
-    }
-  }
-
-  if(len)
-    conversion = 1;
-
-  // convert intpart part of decimal point to a float
-  {
-    double f = 1;
-    for(int i = 0; i < len; i++)
-    {
-      int v = str[len-1-i] - '0';
-      intpart += v*f;
-      f *= 10;
-    }
-    str += len;
-  }
-
-  // check for decimal point (optional)
-  if(*str == '.')
-  {
-    const char *p = ++str;
-
-    // find number of digits after decimal point
-    len = 0;
-    while(isdigit(*p))
-    {
-      p++;
-      len++;
-    }
-
-    if(len)
-      conversion = 1;
-
-    // convert fracpart part of decimal point to a float
-    double f = 0.1;
-    for(int i = 0; i < len; i++)
-    {
-      int v = str[i] - '0';
-      fracpart += v*f;
-      f *= 0.1;
-    }
-
-    str = p;
-  }
-
-  if(conversion && (*str == 'e' || *str == 'E'))
-  {
-    int expsign = +1;
-    const char *p = ++str;
-
-    if(*p == '+')
-      p++;
-    else if(*p == '-')
-    {
-      expsign = -1;
-      p++;
-    }
-
-    str = p;
-    len = 0;
-    while(isdigit(*p))
-    {
-      len++;
-      p++;
-    }
-
-    int f = 1;
-    for(int i = 0; i < len; i++)
-    {
-      int v = str[len-1-i]-'0';
-      exponent += v*f;
-      f *= 10;
-    }
-
-    exponent *= expsign;
-  }
-
-  if(!conversion)
-  {
-    if(success != NULL)
-      *success = 0;
-    return NAN;
-  }
-
-  if(success != NULL)
-    *success = 1;
-
-  return sign*(intpart+fracpart)*pow(10, exponent);
-}
-
-/*
 * params:
 *   - src: source XLSX.
 *   - xlsx: handler. It will be written with data gathered after deploying the XLSX.
@@ -190,26 +49,39 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
 
   // build the temporary path where the excel will be deployed (fallback to /tmp if env var not defined)
   const char *temp_path = getenv(ENVIRONMENT_VARIABLE_TEMP) ? getenv(ENVIRONMENT_VARIABLE_TEMP) : "/tmp";
+#if !(WINDOWS)
+  if(temp_path[0] == '\0')
+      temp_path = "/tmp";
+#endif
   // tmpname() returns a name with a period at the end, this is unliked by Windows standard for folder/file names;
   // non-Windows users use mkdtemp() procedure
   const char *temp_folder = WINDOWS ? tmpnam(NULL) : "/XXXXXX";
-  int deployed_xlsx_path_len = strlen(temp_path) + strlen(temp_folder);
+  int deployed_xlsx_path_len = (int)strlen(temp_path) + (int)strlen(temp_folder);
   char *deployed_xlsx_path = malloc(sizeof(char) * (deployed_xlsx_path_len + 1));
   if(!deployed_xlsx_path) {
     xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+    fprintf(stderr, "XLSX_C ERROR: memory error.\n");
     return 0; // FAIL
   }
+#if (WINDOWS)
+  deployed_xlsx_path[0] = '\0';
+#else
   strcpy(deployed_xlsx_path, temp_path);
+#endif
+
   strcat(deployed_xlsx_path, temp_folder);
   // make the char array a string
   deployed_xlsx_path[deployed_xlsx_path_len] = '\0';
   // non-Windows users are suggested to use mkdtemp()
+#if !defined(_MSC_VER)
   if(!WINDOWS) {
     if(!mkdtemp(deployed_xlsx_path)) {
       xlsx_errno = XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE;
+      fprintf(stderr, "XLSX_C ERROR: XLSX_OPEN_ERRNO_CANT_DEPLOY_FILE to %s\n", deployed_xlsx_path);
       return 0; // FAIL
     }
   }
+#endif
 
   // deploy there
   if(zip_extract(src, deployed_xlsx_path, NULL, NULL) != 0) {
@@ -230,7 +102,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     return 0; // FAIL
   }
   XMLDoc_init(xlsx->shared_strings_xml);
+#if defined(_MSC_VER)
+  char *path_to_shared_strings_xml = (char*)_alloca(strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_SHARED_STRINGS) + 1);
+#else
   char path_to_shared_strings_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_SHARED_STRINGS) + 1];
+#endif
   strcpy(path_to_shared_strings_xml, deployed_xlsx_path);
   strcat(path_to_shared_strings_xml, REL_PATH_TO_SHARED_STRINGS);
   // next function returns false if something went wrong in the parsing OR if the file doesn't exist, which may happen
@@ -244,7 +120,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   // load and parse a bit of styles.xml
   XMLDoc styles_xml;
   XMLDoc_init(&styles_xml);
+#if defined(_MSC_VER)
+  char *path_to_styles_xml = (char*)_alloca(strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_STYLES) + 1);
+#else
   char path_to_styles_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_STYLES) + 1];
+#endif
   strcpy(path_to_styles_xml, deployed_xlsx_path);
   strcat(path_to_styles_xml, REL_PATH_TO_STYLES);
   if(!(XMLDoc_parse_file_DOM(path_to_styles_xml, &styles_xml))) {
@@ -310,7 +190,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       xlsx_close(xlsx);
       if(xlsx_print_err_messages)
         fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" children over \"%s\".\n",
-              STYLES_NUMFMTID_ATTR_NAME, STYLES_CELLXFS_TAG, REL_PATH_TO_STYLES);
+                STYLES_NUMFMTID_ATTR_NAME, STYLES_CELLXFS_TAG, REL_PATH_TO_STYLES);
       xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
       XMLSearch_free(&search_engine, false);
       XMLDoc_free(&styles_xml);
@@ -324,7 +204,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       // predefined style
       xlsx->styles[xf_index]->related_category = xlsx_predefined_style_types[xf_node_numfmtid_value_as_int];
       // note that next value could be NULL
-      xlsx->styles[xf_index]->format_code = xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
+      xlsx->styles[xf_index]->format_code = (char*)xlsx_predefined_styles_format_code[xf_node_numfmtid_value_as_int];
     } else {
       // custom style
       XMLSearch_free(&search_engine, false);
@@ -335,7 +215,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         xlsx_close(xlsx);
         if(xlsx_print_err_messages)
           fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" with \"%s\" equal to \"%s\" in \"%s\".\n",
-          STYLES_NUMFMT_TAG, STYLES_NUMFMTID_ATTR_NAME, xf_node_numfmtid_value, REL_PATH_TO_STYLES);
+                  STYLES_NUMFMT_TAG, STYLES_NUMFMTID_ATTR_NAME, xf_node_numfmtid_value, REL_PATH_TO_STYLES);
         xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
         XMLSearch_free(&search_engine, false);
         XMLDoc_free(&styles_xml);
@@ -343,7 +223,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       }
       for(attr_index = (num_fmt_node->n_attributes - 1); attr_index >= 0; --attr_index) {
         if(strcmp(num_fmt_node->attributes[attr_index].name, STYLES_FORMATCODE_ATTR_NAME) == 0) {
-          format_code_length = strlen(num_fmt_node->attributes[attr_index].value);
+          format_code_length = (int)strlen(num_fmt_node->attributes[attr_index].value);
           if(!(xlsx->styles[xf_index]->format_code = malloc(sizeof(char) * (format_code_length + 1)))) {
             xlsx_close(xlsx);
             xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
@@ -362,7 +242,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
         xlsx_close(xlsx);
         if(xlsx_print_err_messages)
           fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" elements over \"%s\".\n",
-          STYLES_FORMATCODE_ATTR_NAME, STYLES_NUMFMT_TAG, REL_PATH_TO_STYLES);
+                  STYLES_FORMATCODE_ATTR_NAME, STYLES_NUMFMT_TAG, REL_PATH_TO_STYLES);
         xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
         XMLSearch_free(&search_engine, false);
         XMLDoc_free(&styles_xml);
@@ -375,7 +255,11 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   // look for all sheets on the workbook and partially initialize the sheets members
   XMLDoc workbook_xml;
   XMLDoc_init(&workbook_xml);
+#if defined(_MSC_VER)
+  char *path_to_workbook_xml = (char*)_alloca(strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_WORKBOOK) + 1);
+#else
   char path_to_workbook_xml[strlen(deployed_xlsx_path) + strlen(REL_PATH_TO_WORKBOOK) + 1];
+#endif
   strcpy(path_to_workbook_xml, deployed_xlsx_path);
   strcat(path_to_workbook_xml, REL_PATH_TO_WORKBOOK);
   if(!(XMLDoc_parse_file_DOM(path_to_workbook_xml, &workbook_xml))) {
@@ -397,7 +281,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     xlsx_close(xlsx);
     if(xlsx_print_err_messages)
       fprintf(stderr, "XLSX_C ERROR: There's no \"%s\" element inside \"%s\".\n",
-      WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
+              WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
     xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
     XMLSearch_free(&search_engine, false);
     XMLDoc_free(&workbook_xml);
@@ -432,12 +316,12 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       if(strcmp(sheets_node->children[sheet_index]->attributes[attr_index].name, WORKBOOK_NAME_ATTR_NAME) == 0) {
         if(!(xlsx->sheets[sheet_index]->name = \
           malloc(strlen(sheets_node->children[sheet_index]->attributes[attr_index].value) + 1))) {
-            xlsx_close(xlsx);
-            xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
-            XMLSearch_free(&search_engine, false);
-            XMLDoc_free(&workbook_xml);
-            return 0; // FAIL
-          }
+          xlsx_close(xlsx);
+          xlsx_errno = XLSX_OPEN_ERRNO_OUT_OF_MEMORY;
+          XMLSearch_free(&search_engine, false);
+          XMLDoc_free(&workbook_xml);
+          return 0; // FAIL
+        }
         strcpy(xlsx->sheets[sheet_index]->name, sheets_node->children[sheet_index]->attributes[attr_index].value);
         break;
       }
@@ -446,7 +330,7 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
       xlsx_close(xlsx);
       if(xlsx_print_err_messages)
         fprintf(stderr, "XLSX_C ERROR: \"%s\" attr can't be found on \"%s\" children over \"%s\".\n",
-              WORKBOOK_NAME_ATTR_NAME, WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
+                WORKBOOK_NAME_ATTR_NAME, WORKBOOK_SHEETS_TAG, REL_PATH_TO_WORKBOOK);
       xlsx_errno = XLSX_OPEN_ERRNO_XML_PARSING_ERROR;
       XMLSearch_free(&search_engine, false);
       XMLDoc_free(&workbook_xml);
@@ -704,7 +588,7 @@ int xlsx_read_cell(xlsx_sheet_t *sheet, unsigned row, const char *column, xlsx_c
       interpret_cell_node(cell_node, sheet, cell_data_holder);
     }
 
-  } else if(row > sheet->last_row_looked.row_n) {
+  } else if((int)row > sheet->last_row_looked.row_n) {
 
     // probably the next row will contain what you're looking fore
     XMLNode * row_node = find_row_node(sheet, row, (sheet->last_row_looked.sheetdata_child_i + 1));
@@ -757,7 +641,7 @@ int xlsx_close(xlsx_workbook_t *deployed_xlsx)
     for(index = 0; index < deployed_xlsx->n_styles; ++index) {
       if(deployed_xlsx->styles[index]) {
         if((deployed_xlsx->styles[index]->format_code) &&
-          (deployed_xlsx->styles[index]->style_id >= AMOUNT_OF_PREDEFINED_STYLE_TYPES)) {
+           (deployed_xlsx->styles[index]->style_id >= AMOUNT_OF_PREDEFINED_STYLE_TYPES)) {
           // if the style is a custom one, free the allocated memory
           free(deployed_xlsx->styles[index]->format_code);
         }
@@ -881,8 +765,8 @@ static xlsx_formatter get_formatter(const char *format_code, int current_analyze
     case 'm': case 'h': case 's': case 'y': case 'd': {
       // "[Red]" case
       if(format_code[current_analyzed_index] == 'd' && current_analyzed_index >= 3 &&
-        format_code[current_analyzed_index - 3] == '[' && format_code[current_analyzed_index - 2] == 'R' &&
-        format_code[current_analyzed_index - 1] == 'e' && format_code[current_analyzed_index + 1] == ']') {
+         format_code[current_analyzed_index - 3] == '[' && format_code[current_analyzed_index - 2] == 'R' &&
+         format_code[current_analyzed_index - 1] == 'e' && format_code[current_analyzed_index + 1] == ']') {
         return XLSX_FORMATTER_UNKNOWN;
       }
 
@@ -1097,7 +981,7 @@ static XMLNode * find_row_node(xlsx_sheet_t *sheet, unsigned row, int start_from
       sheet->last_row_looked.row_n = (int)row;
       sheet->last_row_looked.sheetdata_child_i = start_from_child;
       return(row_node);
-    } else if(row_inspected > row) {
+    } else if(row_inspected > (int)row) {
       return NULL;
     }
   }
@@ -1210,7 +1094,7 @@ static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *
   if(strchr(cell_text, '.') || strchr(cell_text, 'E')) {
     // it's double (even if it's a big number, since it can't be represented by long long)
     cell_data_holder->value_type = XLSX_DOUBLE;
-    cell_data_holder->value.double_value = strtodouble(cell_text, NULL);
+    cell_data_holder->value.double_value = strtod(cell_text, NULL);
   } else {
     // it's int or long long
     if(strlen(cell_text) > 9) {
@@ -1233,6 +1117,69 @@ static void set_cell_data_values_for_number(const char *cell_text, xlsx_cell_t *
 * notes:
 *   - remove() and rmdir() deals with both path separators.
 */
+#if defined(_MSC_VER)
+#include <fileapi.h>
+
+
+static BOOL IsDots(const char* str) {
+	if(strcmp(str, (".")) && strcmp(str, (".."))) return FALSE;
+	return TRUE;
+}
+
+static int delete_folder(const char *sPath) {
+	HANDLE hFind;  // file handle
+	WIN32_FIND_DATAA FindFileData;
+
+	TCHAR DirPath[MAX_PATH];
+	TCHAR FileName[MAX_PATH];
+
+	strcpy(DirPath, sPath);
+	strcat(DirPath, ("\\*"));    // searching all files
+	strcpy(FileName, sPath);
+	strcat(FileName, ("\\"));
+
+	hFind = FindFirstFileA(DirPath, &FindFileData); // find the first file
+	if(hFind == INVALID_HANDLE_VALUE) return FALSE;
+	strcpy(DirPath, FileName);
+
+	BOOL bSearch = TRUE;
+	while(bSearch) { // until we finds an entry
+		if(FindNextFile(hFind, &FindFileData)) {
+			if(IsDots(FindFileData.cFileName)) continue;
+			strcat(FileName, FindFileData.cFileName);
+			if((FindFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+
+				// we have found a directory, recurse
+				if(!delete_folder(FileName)) {
+					FindClose(hFind);
+					return 0; // directory couldn't be deleted
+				}
+				RemoveDirectory(FileName); // remove the empty directory
+        strcpy(FileName, DirPath);
+			}
+			else {
+				if(!DeleteFile(FileName)) {  // delete the file
+					FindClose(hFind);
+					return 0;
+				}
+				strcpy(FileName, DirPath);
+			}
+		}
+		else {
+			if(GetLastError() == ERROR_NO_MORE_FILES) // no more files there
+				bSearch = FALSE;
+			else {
+				// some error occured, close the handle and return FALSE
+				FindClose(hFind);
+				return 0;
+			}
+		}
+	}
+	FindClose(hFind);  // closing file handle
+
+	return RemoveDirectory(sPath); // remove the empty directory
+}
+#else
 static int delete_folder(const char *folder_path) {
 
   DIR *dir = opendir(folder_path);
@@ -1247,7 +1194,11 @@ static int delete_folder(const char *folder_path) {
   while((entry = readdir(dir))) {
     f_basename = entry->d_name;
     strcpy(f_fullname, folder_path);
+#if WINDOWS
     strcat(f_fullname, "\\");
+#else
+    strcat(f_fullname, "/");
+#endif
     strcat(f_fullname, f_basename);
 
     stat(f_fullname, &entry_statistics); // can set errno
@@ -1271,6 +1222,7 @@ static int delete_folder(const char *folder_path) {
   else
     return 1; // OK
 }
+#endif
 
 
 /*

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), featuring Added, Changed, Deprecated,
 Removed, Fixed, Security, and others; and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0-pre] - 2022-11-19
+### Added
+- Support for compatibility with Visual Studio. Code provided by @gvollant on PR (#11).
+
 ## [0.2.5] - 2022-11-19
 ### Fixed
 - Issue #5 "Parsing double and locale". Fix provided by @gvollant. On some locales, floating point is different from the
@@ -74,7 +78,7 @@ variable, accessible through xlsx_get_xlsx_errno().
 - Unit test regarding error reporting system change.
 
 ### Fixed
-- Manually fixed problems with the zip library (since were acknowledge by the maker but didn't release a new version).
+- Manually fixed problems with the zip library (since were acknowledged by the maker but didn't release a new version).
 The function that opens and deploy the zip weren't returning a negative number if fails under certain circumstances.
 
 ## [0.1.5-alpha] - 2020-12-31
@@ -99,8 +103,8 @@ that values are always returned as a double, even if it isn't a floating point v
 ### Added
 - Finished test_xlsx_load_sheet() & test_xlsx_unload_sheet() & test_xlsx_close().
 - Although the user shouldn't want to access freed data after it was freed, he might want to give it a try. I wasn't
-setting pointers to freed data to NULL and now I decided to do it. This changes were implemented in xlsx_unload_sheet()
-& xlsx_close().
+setting pointers to freed data to NULL, and now I decided to do it. These changes were implemented in
+xlsx_unload_sheet() & xlsx_close().
 
 ## [0.1.2-alpha] - 2020-12-26
 ### Added
