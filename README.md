@@ -143,7 +143,7 @@ Using foreign function calls, a [binding to **Ruby**](https://github.com/damian-
 
 - [x] Reading capabilities for ASCII
 - [x] Reading capabilities for UTF-8
-- [ ] Writting capabilities (WIP)
+- [ ] Writting capabilities (ON HOLD)
 
 ## TODO
 
@@ -155,6 +155,7 @@ All ideas about new implementations are thoroughly thought to keep the essence o
 
 * Matthieu Labas for [**sxmlc**](http://sxmlc.sourceforge.net/).
 * Kuba Podgórski for [**zip**](https://github.com/kuba--/zip).
+* Gilles Vollant (@gvollant)
 
 ## License
 
