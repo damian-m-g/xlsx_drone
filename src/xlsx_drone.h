@@ -13,6 +13,7 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <math.h>
 
 // external libraries
 #include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.32 (2021/07)
