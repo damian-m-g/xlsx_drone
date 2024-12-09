@@ -1,11 +1,11 @@
-LIBRARY VERSION USED
-====================
+LIBRARIES VERSION USED
+======================
 
 PRODUCTION
 ----------
 
-- ZIP // https://github.com/kuba--/zip | using version 0.1.21
-- SXMLC // http://sxmlc.sourceforge.net/ | using version 4.5.1
+- ZIP // https://github.com/kuba--/zip | using version 0.3.2
+- SXMLC // http://sxmlc.sourceforge.net/ | using version 4.5.4
 
 TEST
 ----

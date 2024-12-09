@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), featuring Added, Changed, Deprecated,
 Removed, Fixed, Security, and others; and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2024-12-09
+### Fixed
+- #12 (crash with strange format on xlsx file).
+- Temporary deploy of any XLSX wasn't being made on the proper folder for Windows (Temp one) but in the cwd.
+
+### Changed
+- **zip** library updated from 0.1.32 => 0.3.2.
+- **sxmlc** library updated from 4.5.3 => 4.5.4.
+
+### Added
+- Dynamically linked lib option for GNU/Linux x64: "libxlsx_drone_x64.so", on the "share" folder.
+
 ## [0.3.0] - 2022-11-19
 ### Changed
 - DLLs (on share folder) re-compiled for new version. 
@@ -92,7 +104,7 @@ The function that opens and deploy the zip weren't returning a negative number i
 
 ## [0.1.5-alpha] - 2020-12-31
 ### Added
-- Added a few tests for unicode (UTF-8) support.
+- Added a few tests for Unicode (UTF-8) support.
   
 ### Updated
 - Libraries used: zip 0.1.20 -> 0.1.21; sxmlc 4.3.0 -> 4.5.1.

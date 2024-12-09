@@ -6,3 +6,4 @@ doc/
 temp/
 !temp/keep
 PROGRAMMERNOTES.md
+StartGDBServer.bat

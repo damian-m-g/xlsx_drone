@@ -71,6 +71,7 @@ def build_unit_tests(_64: false, coverage: false)
     command << gcc = 'gcc'
   end
   command << debug = '-ggdb' # prepare exe for debugging purpose (gdb)
+  command << debug = '-O0' # no optimization
   if(coverage)
     command << coverage = '--coverage' # code coverage support (gcov)
   end

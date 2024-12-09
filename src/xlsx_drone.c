@@ -53,7 +53,6 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
   if(temp_path[0] == '\0')
       temp_path = "/tmp";
 #endif
-  // tmpname() returns a name with a period at the end, this is unliked by Windows standard for folder/file names;
   // non-Windows users use mkdtemp() procedure
   const char *temp_folder = WINDOWS ? tmpnam(NULL) : "/XXXXXX";
   int deployed_xlsx_path_len = (int)strlen(temp_path) + (int)strlen(temp_folder);
@@ -63,14 +62,9 @@ int xlsx_open(const char *src, xlsx_workbook_t *xlsx)
     fprintf(stderr, "XLSX_C ERROR: memory error.\n");
     return 0; // FAIL
   }
-#if (WINDOWS)
-  deployed_xlsx_path[0] = '\0';
-#else
   strcpy(deployed_xlsx_path, temp_path);
-#endif
-
   strcat(deployed_xlsx_path, temp_folder);
-  // make the char array a string
+  // ensure the char array to be a string
   deployed_xlsx_path[deployed_xlsx_path_len] = '\0';
   // non-Windows users are suggested to use mkdtemp()
 #if !defined(_MSC_VER)
@@ -805,13 +799,16 @@ static xlsx_formatter get_formatter(const char *format_code, int current_analyze
           }
         } else {
 
-          // being surrounded by '"'
+          // check being surrounded by '"'
           int quotes_open = false;
           int i = 0;
+          int continue_loop = true;
 
-          while(true) {
+          while(continue_loop) {
             switch(format_code[i]) {
               case '\0':
+                // end of string found, get out
+                continue_loop = false;
                 break;
               case '"':
                 if(!quotes_open) {
@@ -819,7 +816,10 @@ static xlsx_formatter get_formatter(const char *format_code, int current_analyze
                 } else {
                   // see if our currently analyzed index is in-between
                   if(current_analyzed_index < i) {
+                    // char definitely escaped, get out
                     char_is_escaped = true;
+                    continue_loop = false;
+                    // quotes_open logically should be set to false, but doesn't matter anymore
                     break;
                   }
                   quotes_open = false;
@@ -827,7 +827,8 @@ static xlsx_formatter get_formatter(const char *format_code, int current_analyze
             }
 
             if((++i == current_analyzed_index) && (!quotes_open)) {
-              break;
+              // char definitely not escaped
+              continue_loop = false;
             }
           }
         }

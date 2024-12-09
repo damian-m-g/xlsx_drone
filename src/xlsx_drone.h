@@ -1,7 +1,7 @@
 /*
 * xlsx_drone - Copyright (c) 2021, Damian M. Gonzalez.
 * Released under MIT license, please refer to LICENSE file for details.
-* VERSION: 0.3.0
+* VERSION: 0.4.0
 */
 #ifndef XLSX_DRONE_LIBRARY_H
 #define XLSX_DRONE_LIBRARY_H
@@ -31,8 +31,8 @@ extern "C" {
 #endif
 
 // external libraries
-#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.1.32 (2021/07)
-#include "../ext/sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 4.5.3 (2022/09)
+#include "../ext/zip.h" // https://github.com/kuba--/zip | using version 0.3.2 (2024/12)
+#include "../ext/sxmlc.h" // http://sxmlc.sourceforge.net/ | using version 4.5.4 (2024/12)
 #include "../ext/sxmlsearch.h"
 
 
