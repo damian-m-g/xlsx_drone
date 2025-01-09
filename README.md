@@ -155,7 +155,7 @@ All ideas about new implementations are thoroughly thought to keep the essence o
 
 * Matthieu Labas for [**sxmlc**](http://sxmlc.sourceforge.net/).
 * Kuba Podgórski for [**zip**](https://github.com/kuba--/zip).
-* Gilles Vollant (@gvollant)
+* Gilles Vollant (@gvollant).
 
 ## License
 
